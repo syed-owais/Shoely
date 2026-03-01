@@ -1,0 +1,25 @@
+# Laravel default ignores
+/vendor/
+/node_modules/
+/public/hot
+/public/storage
+/storage/*.key
+
+# Build / Cache
+/bootstrap/ssr
+/public/build
+
+# Environment
+.env
+.env.backup
+.env.production
+
+# IDE
+.phpactor.json
+.phpunit.result.cache
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+
+# Logs & Cache
+*.log

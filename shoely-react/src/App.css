@@ -1,0 +1,84 @@
+/* App-specific styles */
+
+/* Ensure smooth scroll behavior for GSAP */
+html.has-scroll-smooth {
+  overflow: hidden;
+}
+
+html.has-scroll-smooth body {
+  overflow: hidden;
+}
+
+/* Pin spacer fix for GSAP */
+.pin-spacer {
+  pointer-events: none !important;
+}
+
+.pin-spacer > * {
+  pointer-events: auto !important;
+}
+
+/* Ensure sections stack properly */
+.pinned-section {
+  will-change: transform;
+}
+
+/* Dialog overlay styling */
+[data-state="open"] > [data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+/* Sheet styling */
+[data-radix-sheet-overlay] {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* Button focus states */
+button:focus-visible {
+  outline: 2px solid #FF4D6D;
+  outline-offset: 2px;
+}
+
+/* Input focus states */
+input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 77, 109, 0.3);
+}
+
+/* Image loading placeholder */
+img {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Prevent text selection on interactive elements */
+button,
+[role="button"] {
+  user-select: none;
+}
+
+/* Smooth transitions for all interactive elements */
+a,
+button {
+  transition: all 0.2s ease;
+}
+
+/* Mobile touch improvements */
+@media (hover: none) {
+  .product-card:hover {
+    transform: none;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .pinned-section {
+    will-change: auto;
+  }
+  
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
