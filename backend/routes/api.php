@@ -24,9 +24,6 @@ Route::get('/ping', function () {
 Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 
-// Admin Auth fallback
-Route::post('/admin/login', [AuthenticatedSessionController::class, 'store']);
-
 // Product Endpoints
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/featured', [ProductController::class, 'featured']);

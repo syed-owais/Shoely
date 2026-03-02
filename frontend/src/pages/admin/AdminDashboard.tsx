@@ -1,66 +1,83 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  ShoppingCart, 
-  Package, 
-  TrendingUp, 
+import {
+  ShoppingCart,
+  Package,
+  TrendingUp,
   AlertTriangle,
   ArrowUpRight,
   DollarSign
 } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { adminDashboardApi } from '@/api/admin/dashboardApi';
+import { adminOrderApi } from '@/api/admin/orderApi';
 import gsap from 'gsap';
 
 export default function AdminDashboard() {
-  const { orders, products } = useStore();
   const cardsRef = useRef<HTMLDivElement>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (cardsRef.current) {
+    const fetchData = async () => {
+      try {
+        const [statsRes, ordersRes] = await Promise.all([
+          adminDashboardApi.getStats(),
+          adminOrderApi.getAll({ per_page: 5 }),
+        ]);
+        setStats(statsRes.data.data || statsRes.data);
+        const ordersData = ordersRes.data.data || [];
+        setRecentOrders(ordersData.slice(0, 5));
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && cardsRef.current) {
       gsap.fromTo(
         cardsRef.current.querySelectorAll('.stat-card'),
         { y: 20, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: 'power2.out' }
       );
     }
-  }, []);
+  }, [loading]);
 
-  // Calculate stats
-  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
-  const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'confirmed').length;
-  const totalOrders = orders.length;
-  const lowStockProducts = products.filter(p => 
-    p.sizes.some(s => s.quantity <= 2)
-  ).length;
-
-  const recentOrders = orders.slice(-5).reverse();
+  const totalRevenue = stats?.totalRevenue || 0;
+  const pendingOrders = stats?.pendingOrders || 0;
+  const totalOrders = stats?.totalOrders || 0;
+  const lowStockProducts = stats?.lowStockProducts || 0;
 
   const statCards = [
-    { 
-      label: 'Total Revenue', 
-      value: `$${totalRevenue.toLocaleString()}`, 
-      icon: DollarSign, 
+    {
+      label: 'Total Revenue',
+      value: `$${totalRevenue.toLocaleString()}`,
+      icon: DollarSign,
       color: 'bg-green-500/20 text-green-400',
       change: '+12%'
     },
-    { 
-      label: 'Total Orders', 
-      value: totalOrders.toString(), 
-      icon: ShoppingCart, 
+    {
+      label: 'Total Orders',
+      value: totalOrders.toString(),
+      icon: ShoppingCart,
       color: 'bg-blue-500/20 text-blue-400',
       change: '+8%'
     },
-    { 
-      label: 'Pending Orders', 
-      value: pendingOrders.toString(), 
-      icon: Package, 
+    {
+      label: 'Pending Orders',
+      value: pendingOrders.toString(),
+      icon: Package,
       color: 'bg-yellow-500/20 text-yellow-400',
       change: null
     },
-    { 
-      label: 'Low Stock', 
-      value: lowStockProducts.toString(), 
-      icon: AlertTriangle, 
+    {
+      label: 'Low Stock',
+      value: lowStockProducts.toString(),
+      icon: AlertTriangle,
       color: 'bg-red-500/20 text-red-400',
       change: null
     },
@@ -75,6 +92,18 @@ export default function AdminDashboard() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-pulse">
+        <div className="h-8 bg-white/5 rounded w-48" />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-white/5 rounded-xl" />)}
+        </div>
+        <div className="h-64 bg-white/5 rounded-xl" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -83,7 +112,7 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
           <p className="text-white/60">Welcome back! Here&apos;s what&apos;s happening today.</p>
         </div>
-        <Link 
+        <Link
           to="/admin/products/new"
           className="px-4 py-2 bg-[#FF4D6D] text-white rounded-lg font-medium hover:bg-[#FF4D6D]/90 transition-colors"
         >
@@ -122,8 +151,8 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 bg-white/5 rounded-xl border border-white/10">
           <div className="p-6 border-b border-white/10 flex items-center justify-between">
             <h2 className="font-semibold text-white">Recent Orders</h2>
-            <Link 
-              to="/admin/orders" 
+            <Link
+              to="/admin/orders"
               className="text-[#FF4D6D] text-sm hover:underline flex items-center gap-1"
             >
               View all <ArrowUpRight className="w-4 h-4" />
@@ -135,20 +164,20 @@ export default function AdminDashboard() {
                 <p className="text-white/60">No orders yet</p>
               </div>
             ) : (
-              recentOrders.map((order) => (
-                <Link 
-                  key={order.id} 
+              recentOrders.map((order: any) => (
+                <Link
+                  key={order.id}
                   to={`/admin/orders/${order.id}`}
                   className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
                 >
                   <div>
-                    <p className="text-white font-medium">{order.id}</p>
+                    <p className="text-white font-medium">{order.orderNumber}</p>
                     <p className="text-white/60 text-sm">
-                      {order.customer.firstName} {order.customer.lastName}
+                      {order.customer?.firstName} {order.customer?.lastName}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-white font-medium">${order.total}</p>
+                    <p className="text-white font-medium">${order.financials?.totalAmount}</p>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${getStatusColor(order.status)}`}>
                       {order.status}
                     </span>
@@ -164,21 +193,21 @@ export default function AdminDashboard() {
           <div className="bg-white/5 rounded-xl p-6 border border-white/10">
             <h2 className="font-semibold text-white mb-4">Quick Actions</h2>
             <div className="space-y-2">
-              <Link 
+              <Link
                 to="/admin/products/new"
                 className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <Package className="w-5 h-5 text-[#FF4D6D]" />
                 <span className="text-white">Add New Product</span>
               </Link>
-              <Link 
+              <Link
                 to="/admin/promo-codes"
                 className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <DollarSign className="w-5 h-5 text-[#FF4D6D]" />
                 <span className="text-white">Create Promo Code</span>
               </Link>
-              <Link 
+              <Link
                 to="/admin/campaigns"
                 className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
@@ -198,7 +227,7 @@ export default function AdminDashboard() {
               <p className="text-white/60 text-sm mb-4">
                 {lowStockProducts} product{lowStockProducts > 1 ? 's' : ''} need attention
               </p>
-              <Link 
+              <Link
                 to="/admin/products"
                 className="text-red-400 text-sm hover:underline"
               >

@@ -2,30 +2,67 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Share2, ShieldCheck, Truck, RotateCcw, Check, Minus, Plus } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { productApi } from '@/api/consumer/productApi';
+import type { Product } from '@/types';
 import gsap from 'gsap';
 
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProductById, addToCart, cart } = useStore();
-  const product = getProductById(id || '');
-  
+  const { addToCart, cart } = useStore();
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [showAddedMessage, setShowAddedMessage] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
-  
+
   const pageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (pageRef.current) {
+    const fetchProduct = async () => {
+      try {
+        const res = await productApi.getById(id || '');
+        setProduct(res.data.data || res.data);
+      } catch (err) {
+        console.error('Failed to load product:', err);
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [id]);
+
+  useEffect(() => {
+    if (!loading && product && pageRef.current) {
       gsap.fromTo(
         pageRef.current.querySelectorAll('.page-animate'),
         { y: 20, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: 'power2.out' }
       );
     }
-  }, []);
+  }, [loading, product]);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 animate-pulse">
+          <div className="aspect-square rounded-2xl bg-white/5" />
+          <div className="space-y-6">
+            <div className="h-4 bg-white/5 rounded w-24" />
+            <div className="h-8 bg-white/5 rounded w-3/4" />
+            <div className="h-10 bg-white/5 rounded w-40" />
+            <div className="h-20 bg-white/5 rounded" />
+            <div className="grid grid-cols-4 gap-2">
+              {[...Array(8)].map((_, i) => <div key={i} className="h-12 bg-white/5 rounded" />)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -38,13 +75,13 @@ export default function ProductPage() {
     );
   }
 
-  const isInCart = cart.some(item => item.productId === product.id && item.size === selectedSize);
+  const isInCart = cart.some(item => item.productId === String(product.id) && item.size === selectedSize);
 
   const handleAddToCart = () => {
     if (!selectedSize) return;
-    
+
     addToCart({
-      productId: product.id,
+      productId: String(product.id),
       name: product.name,
       brand: product.brand,
       price: product.price,
@@ -53,7 +90,7 @@ export default function ProductPage() {
       quantity,
       sku: product.sku,
     });
-    
+
     setShowAddedMessage(true);
     setTimeout(() => setShowAddedMessage(false), 2000);
   };
@@ -84,16 +121,15 @@ export default function ProductPage() {
               className="w-full h-full object-cover"
             />
           </div>
-          
+
           {product.images.length > 1 && (
             <div className="flex gap-2">
               {product.images.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveImage(idx)}
-                  className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                    activeImage === idx ? 'border-[#FF4D6D]' : 'border-transparent'
-                  }`}
+                  className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${activeImage === idx ? 'border-[#FF4D6D]' : 'border-transparent'
+                    }`}
                 >
                   <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
@@ -120,7 +156,7 @@ export default function ProductPage() {
                 </button>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 mt-3">
               <span className="text-3xl font-bold text-[#FF4D6D]">${product.price}</span>
               {product.originalPrice && (
@@ -137,11 +173,10 @@ export default function ProductPage() {
           {/* Condition & SKU */}
           <div className="flex items-center gap-4 py-4 border-y border-white/10">
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${
-                product.condition === 'Like New' ? 'bg-green-500' :
-                product.condition === 'Excellent' ? 'bg-blue-500' :
-                'bg-yellow-500'
-              }`} />
+              <span className={`w-2 h-2 rounded-full ${product.condition === 'Like New' ? 'bg-green-500' :
+                  product.condition === 'Excellent' ? 'bg-blue-500' :
+                    'bg-yellow-500'
+                }`} />
               <span className="text-white/70 text-sm">{product.condition}</span>
             </div>
             <span className="text-white/30">|</span>
@@ -179,13 +214,12 @@ export default function ProductPage() {
                   key={sizeInfo.size}
                   onClick={() => setSelectedSize(sizeInfo.size)}
                   disabled={!sizeInfo.available}
-                  className={`py-3 rounded-lg text-sm font-medium transition-all ${
-                    selectedSize === sizeInfo.size
+                  className={`py-3 rounded-lg text-sm font-medium transition-all ${selectedSize === sizeInfo.size
                       ? 'bg-[#FF4D6D] text-white'
                       : sizeInfo.available
-                      ? 'bg-white/10 text-white hover:bg-white/20'
-                      : 'bg-white/5 text-white/30 cursor-not-allowed line-through'
-                  }`}
+                        ? 'bg-white/10 text-white hover:bg-white/20'
+                        : 'bg-white/5 text-white/30 cursor-not-allowed line-through'
+                    }`}
                 >
                   {sizeInfo.size}
                 </button>

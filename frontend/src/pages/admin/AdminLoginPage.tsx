@@ -24,7 +24,7 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await api.post('/api/login', { email, password });
+      const response = await api.post('/api/admin/login', { email, password });
       const { user: userData, token } = response.data;
 
       // Only allow admins to log in through this page

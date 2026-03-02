@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2, Minus, Plus, ShoppingBag, Tag, X, Check } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { promoCodeApi } from '@/api/consumer/promoCodeApi';
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { cart, removeFromCart, updateCartQuantity, getCartTotal, validatePromoCode, clearCart } = useStore();
-  
+  const { cart, removeFromCart, updateCartQuantity, getCartTotal, clearCart } = useStore();
+
   const [promoCode, setPromoCode] = useState('');
   const [promoError, setPromoError] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number } | null>(null);
@@ -17,16 +18,21 @@ export default function CartPage() {
   const discount = appliedPromo?.discount || 0;
   const total = subtotal + shipping - discount;
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
-    
-    const result = validatePromoCode(promoCode, subtotal);
-    if (result.valid) {
-      setAppliedPromo({ code: promoCode.toUpperCase(), discount: result.discount });
-      setPromoError('');
-      setPromoCode('');
-    } else {
-      setPromoError(result.message || 'Invalid promo code');
+
+    try {
+      const res = await promoCodeApi.validate(promoCode, subtotal);
+      const result = res.data;
+      if (result.valid) {
+        setAppliedPromo({ code: promoCode.toUpperCase(), discount: result.discount });
+        setPromoError('');
+        setPromoCode('');
+      } else {
+        setPromoError(result.message || 'Invalid promo code');
+      }
+    } catch (err: any) {
+      setPromoError(err.response?.data?.message || 'Failed to validate promo code');
     }
   };
 
@@ -44,8 +50,8 @@ export default function CartPage() {
           </div>
           <h1 className="font-display font-bold text-2xl text-white mb-2">Your cart is empty</h1>
           <p className="text-white/60 mb-8">Looks like you haven&apos;t added any sneakers yet.</p>
-          <Link 
-            to="/shop" 
+          <Link
+            to="/shop"
             className="inline-flex items-center gap-2 bg-[#FF4D6D] text-white px-8 py-3 rounded-full font-semibold hover:bg-[#FF4D6D]/90 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -76,7 +82,7 @@ export default function CartPage() {
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
           {cart.map((item) => (
-            <div 
+            <div
               key={`${item.productId}-${item.size}`}
               className="flex gap-4 p-4 bg-white/5 rounded-xl"
             >
@@ -87,12 +93,12 @@ export default function CartPage() {
                   className="w-full h-full object-cover rounded-lg"
                 />
               </Link>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-white/50 text-xs uppercase">{item.brand}</p>
-                    <Link 
+                    <Link
                       to={`/product/${item.productId}`}
                       className="text-white font-semibold hover:text-[#FF4D6D] transition-colors line-clamp-1"
                     >
@@ -107,7 +113,7 @@ export default function CartPage() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                
+
                 <div className="flex items-center justify-between mt-4">
                   <div className="flex items-center gap-2">
                     <button
@@ -130,8 +136,8 @@ export default function CartPage() {
             </div>
           ))}
 
-          <Link 
-            to="/shop" 
+          <Link
+            to="/shop"
             className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -143,7 +149,7 @@ export default function CartPage() {
         <div className="lg:sticky lg:top-24 h-fit">
           <div className="bg-white/5 rounded-xl p-6 space-y-4">
             <h2 className="font-semibold text-white text-lg">Order Summary</h2>
-            
+
             {/* Promo Code */}
             {!appliedPromo ? (
               <div>

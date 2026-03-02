@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Calendar, Percent, DollarSign } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { adminPromoCodeApi } from '@/api/admin/promoCodeApi';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function AdminPromoCodes() {
-  const { promoCodes, addPromoCode, updatePromoCode, deletePromoCode } = useStore();
+  const [promoCodes, setPromoCodes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState({
     code: '',
     type: 'percentage' as 'percentage' | 'fixed',
@@ -20,30 +21,49 @@ export default function AdminPromoCodes() {
     description: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchPromoCodes = async () => {
+    try {
+      const res = await adminPromoCodeApi.getAll();
+      setPromoCodes(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to load promo codes:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPromoCodes();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const promoData = {
       code: formData.code.toUpperCase(),
       type: formData.type,
       value: Number(formData.value),
-      minOrderAmount: formData.minOrderAmount ? Number(formData.minOrderAmount) : undefined,
-      maxDiscount: formData.maxDiscount ? Number(formData.maxDiscount) : undefined,
-      usageLimit: formData.usageLimit ? Number(formData.usageLimit) : undefined,
-      startDate: new Date(formData.startDate).toISOString(),
-      endDate: new Date(formData.endDate).toISOString(),
-      isActive: true,
+      min_order_amount: formData.minOrderAmount ? Number(formData.minOrderAmount) : undefined,
+      max_discount: formData.maxDiscount ? Number(formData.maxDiscount) : undefined,
+      usage_limit: formData.usageLimit ? Number(formData.usageLimit) : undefined,
+      start_date: new Date(formData.startDate).toISOString(),
+      end_date: new Date(formData.endDate).toISOString(),
+      is_active: true,
       description: formData.description,
     };
 
-    if (editingId) {
-      updatePromoCode(editingId, promoData);
-    } else {
-      addPromoCode(promoData);
+    try {
+      if (editingId) {
+        await adminPromoCodeApi.update(editingId, promoData);
+      } else {
+        await adminPromoCodeApi.create(promoData);
+      }
+      resetForm();
+      setShowAddDialog(false);
+      fetchPromoCodes();
+    } catch (err) {
+      console.error('Failed to save promo code:', err);
     }
-    
-    resetForm();
-    setShowAddDialog(false);
   };
 
   const resetForm = () => {
@@ -61,7 +81,7 @@ export default function AdminPromoCodes() {
     setEditingId(null);
   };
 
-  const startEdit = (promo: typeof promoCodes[0]) => {
+  const startEdit = (promo: any) => {
     setFormData({
       code: promo.code,
       type: promo.type,
@@ -77,13 +97,38 @@ export default function AdminPromoCodes() {
     setShowAddDialog(true);
   };
 
-  const toggleActive = (promo: typeof promoCodes[0]) => {
-    updatePromoCode(promo.id, { isActive: !promo.isActive });
+  const toggleActive = async (promo: any) => {
+    try {
+      await adminPromoCodeApi.update(promo.id, { is_active: !promo.isActive });
+      fetchPromoCodes();
+    } catch (err) {
+      console.error('Failed to toggle promo code:', err);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await adminPromoCodeApi.delete(id);
+      setPromoCodes(prev => prev.filter(p => p.id !== id));
+    } catch (err) {
+      console.error('Failed to delete promo code:', err);
+    }
   };
 
   const isExpired = (endDate: string) => {
     return new Date(endDate) < new Date();
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-white/5 rounded w-48" />
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-48 bg-white/5 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -107,18 +152,17 @@ export default function AdminPromoCodes() {
 
       {/* Promo Codes Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {promoCodes.map((promo) => {
+        {promoCodes.map((promo: any) => {
           const expired = isExpired(promo.endDate);
-          const usagePercent = promo.usageLimit 
-            ? Math.round((promo.usageCount / promo.usageLimit) * 100) 
+          const usagePercent = promo.usageLimit
+            ? Math.round((promo.usageCount / promo.usageLimit) * 100)
             : 0;
-          
+
           return (
-            <div 
-              key={promo.id} 
-              className={`bg-white/5 rounded-xl p-6 border ${
-                expired ? 'border-red-500/20' : 'border-white/10'
-              }`}
+            <div
+              key={promo.id}
+              className={`bg-white/5 rounded-xl p-6 border ${expired ? 'border-red-500/20' : 'border-white/10'
+                }`}
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -140,7 +184,7 @@ export default function AdminPromoCodes() {
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => deletePromoCode(promo.id)}
+                    onClick={() => handleDelete(promo.id)}
                     className="p-2 text-white/60 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -173,7 +217,7 @@ export default function AdminPromoCodes() {
                     <span className="text-white">{promo.usageCount} / {promo.usageLimit}</span>
                   </div>
                   <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-[#FF4D6D] rounded-full transition-all"
                       style={{ width: `${usagePercent}%` }}
                     />
@@ -190,11 +234,10 @@ export default function AdminPromoCodes() {
                 </div>
                 <button
                   onClick={() => toggleActive(promo)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    promo.isActive 
-                      ? 'bg-green-500/20 text-green-400' 
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${promo.isActive
+                      ? 'bg-green-500/20 text-green-400'
                       : 'bg-white/10 text-white/60'
-                  }`}
+                    }`}
                 >
                   {promo.isActive ? 'Active' : 'Inactive'}
                 </button>
@@ -219,7 +262,7 @@ export default function AdminPromoCodes() {
               {editingId ? 'Edit Promo Code' : 'Create Promo Code'}
             </DialogTitle>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div>
               <label className="block text-white/70 text-sm mb-1">Code *</label>

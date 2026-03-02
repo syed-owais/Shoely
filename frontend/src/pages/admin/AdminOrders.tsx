@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Package, Truck, CheckCircle, Clock, XCircle, Eye } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { adminOrderApi } from '@/api/admin/orderApi';
 import type { OrderStatus } from '@/types';
 
 const statusFilters: { value: OrderStatus | 'all'; label: string; icon: typeof Package }[] = [
@@ -15,20 +15,34 @@ const statusFilters: { value: OrderStatus | 'all'; label: string; icon: typeof P
 ];
 
 export default function AdminOrders() {
-  const { orders } = useStore();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
 
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const params: Record<string, any> = {};
+        if (statusFilter !== 'all') params.status = statusFilter;
+        const res = await adminOrderApi.getAll(params);
+        setOrders(res.data.data || []);
+      } catch (err) {
+        console.error('Failed to load orders:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, [statusFilter]);
+
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customer.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customer.lastName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+    const matchesSearch =
+      (order.orderNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (order.customer?.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (order.customer?.firstName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (order.customer?.lastName || '').toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
 
   const getStatusColor = (status: OrderStatus) => {
@@ -41,6 +55,16 @@ export default function AdminOrders() {
       default: return 'bg-white/10 text-white/60';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-white/5 rounded w-48" />
+        <div className="h-12 bg-white/5 rounded-lg" />
+        <div className="h-64 bg-white/5 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -69,11 +93,10 @@ export default function AdminOrders() {
               <button
                 key={filter.value}
                 onClick={() => setStatusFilter(filter.value)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg whitespace-nowrap transition-colors ${
-                  statusFilter === filter.value
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg whitespace-nowrap transition-colors ${statusFilter === filter.value
                     ? 'bg-[#FF4D6D] text-white'
                     : 'bg-white/10 text-white/70 hover:bg-white/20'
-                }`}
+                  }`}
               >
                 <Icon className="w-4 h-4" />
                 {filter.label}
@@ -98,15 +121,15 @@ export default function AdminOrders() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
-              {filteredOrders.map((order) => (
+              {filteredOrders.map((order: any) => (
                 <tr key={order.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-6 py-4">
-                    <p className="text-white font-medium">{order.id}</p>
-                    <p className="text-white/60 text-sm">{order.items.length} item(s)</p>
+                    <p className="text-white font-medium">{order.orderNumber}</p>
+                    <p className="text-white/60 text-sm">{order.items?.length || 0} item(s)</p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-white">{order.customer.firstName} {order.customer.lastName}</p>
-                    <p className="text-white/60 text-sm">{order.customer.email}</p>
+                    <p className="text-white">{order.customer?.firstName} {order.customer?.lastName}</p>
+                    <p className="text-white/60 text-sm">{order.customer?.email}</p>
                   </td>
                   <td className="px-6 py-4 text-white/60">
                     {new Date(order.createdAt).toLocaleDateString('en-US', {
@@ -116,7 +139,7 @@ export default function AdminOrders() {
                     })}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-white font-medium">${order.total}</span>
+                    <span className="text-white font-medium">${order.financials?.totalAmount}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-block px-2 py-1 rounded-full text-xs ${getStatusColor(order.status)}`}>
@@ -125,7 +148,7 @@ export default function AdminOrders() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end">
-                      <Link 
+                      <Link
                         to={`/admin/orders/${order.id}`}
                         className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                       >
@@ -138,7 +161,7 @@ export default function AdminOrders() {
             </tbody>
           </table>
         </div>
-        
+
         {filteredOrders.length === 0 && (
           <div className="p-12 text-center">
             <Package className="w-12 h-12 mx-auto text-white/30 mb-4" />
@@ -156,19 +179,19 @@ export default function AdminOrders() {
         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
           <p className="text-white/60 text-sm">Pending</p>
           <p className="text-2xl font-bold text-yellow-400">
-            {orders.filter(o => o.status === 'pending').length}
+            {orders.filter((o: any) => o.status === 'pending').length}
           </p>
         </div>
         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
           <p className="text-white/60 text-sm">To Authenticate</p>
           <p className="text-2xl font-bold text-purple-400">
-            {orders.filter(o => o.status === 'confirmed').length}
+            {orders.filter((o: any) => o.status === 'confirmed').length}
           </p>
         </div>
         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
           <p className="text-white/60 text-sm">Total Revenue</p>
           <p className="text-2xl font-bold text-green-400">
-            ${orders.reduce((sum, o) => sum + o.total, 0).toLocaleString()}
+            ${orders.reduce((sum: number, o: any) => sum + (o.financials?.totalAmount || 0), 0).toLocaleString()}
           </p>
         </div>
       </div>

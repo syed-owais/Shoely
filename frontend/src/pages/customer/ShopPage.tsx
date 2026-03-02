@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Filter, ChevronDown, X, Search, Grid3X3, List } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { productApi } from '@/api/consumer/productApi';
+import type { Product } from '@/types';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -18,9 +19,8 @@ const sortOptions = [
 
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { filterProducts } = useStore();
   const productsRef = useRef<HTMLDivElement>(null);
-  
+
   const [filters, setFilters] = useState({
     brand: searchParams.get('brand') || 'All',
     condition: 'All',
@@ -29,20 +29,37 @@ export default function ShopPage() {
     search: searchParams.get('search') || '',
     sortBy: 'newest',
   });
-  
+
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-
-  const products = filterProducts({
-    brand: filters.brand === 'All' ? undefined : filters.brand,
-    condition: filters.condition === 'All' ? undefined : filters.condition,
-    minPrice: filters.minPrice ? Number(filters.minPrice) : undefined,
-    maxPrice: filters.maxPrice ? Number(filters.maxPrice) : undefined,
-    search: filters.search || undefined,
-    sortBy: filters.sortBy as any,
-  });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const params: Record<string, any> = {};
+        if (filters.brand !== 'All') params.brand = filters.brand;
+        if (filters.condition !== 'All') params.condition = filters.condition;
+        if (filters.minPrice) params.min_price = filters.minPrice;
+        if (filters.maxPrice) params.max_price = filters.maxPrice;
+        if (filters.search) params.search = filters.search;
+        if (filters.sortBy) params.sort_by = filters.sortBy;
+
+        const res = await productApi.getAll(params);
+        setProducts(res.data.data || []);
+      } catch (err) {
+        console.error('Failed to load products:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, [filters]);
+
+  useEffect(() => {
+    if (loading) return;
     // Animate products on load
     if (productsRef.current) {
       gsap.fromTo(
@@ -51,11 +68,11 @@ export default function ShopPage() {
         { y: 0, opacity: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out' }
       );
     }
-  }, [filters]);
+  }, [loading, products]);
 
   const updateFilter = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-    
+
     // Update URL params
     const params = new URLSearchParams(searchParams);
     if (value && value !== 'All') {
@@ -106,11 +123,10 @@ export default function ShopPage() {
             <button
               key={brand}
               onClick={() => updateFilter('brand', brand)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                filters.brand === brand
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filters.brand === brand
                   ? 'bg-[#FF4D6D]/20 text-[#FF4D6D]'
                   : 'text-white/70 hover:bg-white/5 hover:text-white'
-              }`}
+                }`}
             >
               {brand}
             </button>
@@ -126,11 +142,10 @@ export default function ShopPage() {
             <button
               key={condition}
               onClick={() => updateFilter('condition', condition)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                filters.condition === condition
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filters.condition === condition
                   ? 'bg-[#FF4D6D]/20 text-[#FF4D6D]'
                   : 'text-white/70 hover:bg-white/5 hover:text-white'
-              }`}
+                }`}
             >
               {condition}
             </button>
@@ -179,7 +194,7 @@ export default function ShopPage() {
           Shop All Sneakers
         </h1>
         <p className="text-white/60">
-          {products.length} authentic sneakers, hand-checked by experts
+          {loading ? 'Loading...' : `${products.length} authentic sneakers, hand-checked by experts`}
         </p>
       </div>
 
@@ -259,17 +274,15 @@ export default function ShopPage() {
           <div className="hidden sm:flex items-center bg-white/10 rounded-lg p-1">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-colors ${
-                viewMode === 'grid' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
-              }`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
+                }`}
             >
               <Grid3X3 className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-md transition-colors ${
-                viewMode === 'list' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
-              }`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
+                }`}
             >
               <List className="w-4 h-4" />
             </button>
@@ -285,7 +298,18 @@ export default function ShopPage() {
 
         {/* Products Grid */}
         <div ref={productsRef} className="flex-1">
-          {products.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="aspect-square rounded-xl bg-white/5 mb-3" />
+                  <div className="h-3 bg-white/5 rounded mb-2 w-16" />
+                  <div className="h-4 bg-white/5 rounded mb-2" />
+                  <div className="h-4 bg-white/5 rounded w-20" />
+                </div>
+              ))}
+            </div>
+          ) : products.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-white/60 text-lg">No products found</p>
               <button
@@ -296,22 +320,19 @@ export default function ShopPage() {
               </button>
             </div>
           ) : (
-            <div className={`grid gap-4 lg:gap-6 ${
-              viewMode === 'grid' 
-                ? 'grid-cols-2 lg:grid-cols-3' 
+            <div className={`grid gap-4 lg:gap-6 ${viewMode === 'grid'
+                ? 'grid-cols-2 lg:grid-cols-3'
                 : 'grid-cols-1'
-            }`}>
+              }`}>
               {products.map((product) => (
                 <Link
                   key={product.id}
                   to={`/product/${product.id}`}
-                  className={`product-item group ${
-                    viewMode === 'list' ? 'flex gap-4 p-4 bg-white/5 rounded-xl' : ''
-                  }`}
+                  className={`product-item group ${viewMode === 'list' ? 'flex gap-4 p-4 bg-white/5 rounded-xl' : ''
+                    }`}
                 >
-                  <div className={`relative overflow-hidden rounded-xl bg-white/5 ${
-                    viewMode === 'list' ? 'w-32 h-32 flex-shrink-0' : 'aspect-square mb-3'
-                  }`}>
+                  <div className={`relative overflow-hidden rounded-xl bg-white/5 ${viewMode === 'list' ? 'w-32 h-32 flex-shrink-0' : 'aspect-square mb-3'
+                    }`}>
                     <img
                       src={product.images[0]}
                       alt={product.name}
@@ -323,31 +344,30 @@ export default function ShopPage() {
                       </span>
                     )}
                   </div>
-                  
+
                   <div className={viewMode === 'list' ? 'flex-1' : ''}>
                     <p className="text-white/50 text-xs uppercase tracking-wider">{product.brand}</p>
                     <h3 className="text-white font-semibold group-hover:text-[#FF4D6D] transition-colors line-clamp-1">
                       {product.name}
                     </h3>
-                    
+
                     {viewMode === 'list' && (
                       <p className="text-white/60 text-sm mt-1 line-clamp-2">
                         {product.description}
                       </p>
                     )}
-                    
+
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[#FF4D6D] font-bold">${product.price}</span>
                       {product.originalPrice && (
                         <span className="text-white/40 text-sm line-through">${product.originalPrice}</span>
                       )}
                     </div>
-                    
-                    <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      product.condition === 'Like New' ? 'bg-green-500/20 text-green-400' :
-                      product.condition === 'Excellent' ? 'bg-blue-500/20 text-blue-400' :
-                      'bg-yellow-500/20 text-yellow-400'
-                    }`}>
+
+                    <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${product.condition === 'Like New' ? 'bg-green-500/20 text-green-400' :
+                        product.condition === 'Excellent' ? 'bg-blue-500/20 text-blue-400' :
+                          'bg-yellow-500/20 text-yellow-400'
+                      }`}>
                       {product.condition}
                     </span>
                   </div>

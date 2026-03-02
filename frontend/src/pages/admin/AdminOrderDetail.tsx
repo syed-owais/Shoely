@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Truck, Save, Edit2 } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { adminOrderApi } from '@/api/admin/orderApi';
 import type { OrderStatus } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -16,14 +16,42 @@ const statusOptions: { value: OrderStatus; label: string; color: string }[] = [
 
 export default function AdminOrderDetail() {
   const { id } = useParams<{ id: string }>();
-  const { getOrderById, updateOrderStatus } = useStore();
-  const order = getOrderById(id || '');
-  
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   const [isEditing, setIsEditing] = useState(false);
   const [newStatus, setNewStatus] = useState<OrderStatus>('pending');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const res = await adminOrderApi.getById(id || '');
+        const orderData = res.data.data || res.data;
+        setOrder(orderData);
+      } catch (err) {
+        console.error('Failed to load order:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrder();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-white/5 rounded w-48" />
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-64 bg-white/5 rounded-xl" />
+          <div className="h-64 bg-white/5 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -36,19 +64,27 @@ export default function AdminOrderDetail() {
     );
   }
 
-  const handleUpdateStatus = () => {
-    updateOrderStatus(order.id, newStatus, trackingNumber ? {
-      number: trackingNumber,
-      url: trackingUrl || `https://track.com/${trackingNumber}`,
-    } : undefined);
-    setIsEditing(false);
-    setShowConfirm(false);
+  const handleUpdateStatus = async () => {
+    setSaving(true);
+    try {
+      const res = await adminOrderApi.updateStatus(order.id, {
+        status: newStatus,
+        tracking_number: trackingNumber || undefined,
+      });
+      setOrder(res.data.data || res.data);
+      setIsEditing(false);
+      setShowConfirm(false);
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const startEditing = () => {
     setNewStatus(order.status);
-    setTrackingNumber(order.trackingNumber || '');
-    setTrackingUrl(order.trackingUrl || '');
+    setTrackingNumber(order.tracking?.number || '');
+    setTrackingUrl(order.tracking?.url || '');
     setIsEditing(true);
   };
 
@@ -61,14 +97,14 @@ export default function AdminOrderDetail() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link 
+          <Link
             to="/admin/orders"
             className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white">{order.id}</h1>
+            <h1 className="text-2xl font-bold text-white">{order.orderNumber}</h1>
             <p className="text-white/60">
               Placed on {new Date(order.createdAt).toLocaleDateString('en-US', {
                 month: 'long',
@@ -80,7 +116,7 @@ export default function AdminOrderDetail() {
             </p>
           </div>
         </div>
-        
+
         {!isEditing ? (
           <button
             onClick={startEditing}
@@ -114,16 +150,16 @@ export default function AdminOrderDetail() {
           {/* Status */}
           <div className="bg-white/5 rounded-xl p-6 border border-white/10">
             <h2 className="font-semibold text-white mb-4">Order Status</h2>
-            
+
             {!isEditing ? (
               <div className="flex items-center gap-3">
                 <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                   {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                 </span>
-                {order.trackingNumber && (
+                {order.tracking?.number && (
                   <div className="flex items-center gap-2 text-white/60">
                     <Truck className="w-4 h-4" />
-                    <span>Tracking: {order.trackingNumber}</span>
+                    <span>Tracking: {order.tracking.number}</span>
                   </div>
                 )}
               </div>
@@ -141,7 +177,7 @@ export default function AdminOrderDetail() {
                     ))}
                   </select>
                 </div>
-                
+
                 {newStatus === 'shipped' && (
                   <>
                     <div>
@@ -174,11 +210,11 @@ export default function AdminOrderDetail() {
           <div className="bg-white/5 rounded-xl p-6 border border-white/10">
             <h2 className="font-semibold text-white mb-4">Order Items</h2>
             <div className="space-y-4">
-              {order.items.map((item, idx) => (
+              {order.items?.map((item: any, idx: number) => (
                 <div key={idx} className="flex gap-4 p-4 bg-white/5 rounded-lg">
-                  <img 
-                    src={item.image} 
-                    alt={item.name} 
+                  <img
+                    src={item.image}
+                    alt={item.name}
                     className="w-20 h-20 object-cover rounded-lg"
                   />
                   <div className="flex-1">
@@ -204,10 +240,10 @@ export default function AdminOrderDetail() {
             <h2 className="font-semibold text-white mb-4">Customer</h2>
             <div className="space-y-1">
               <p className="text-white font-medium">
-                {order.customer.firstName} {order.customer.lastName}
+                {order.customer?.firstName} {order.customer?.lastName}
               </p>
-              <p className="text-white/60 text-sm">{order.customer.email}</p>
-              <p className="text-white/60 text-sm">{order.customer.phone}</p>
+              <p className="text-white/60 text-sm">{order.customer?.email}</p>
+              <p className="text-white/60 text-sm">{order.customer?.phone}</p>
             </div>
           </div>
 
@@ -215,11 +251,11 @@ export default function AdminOrderDetail() {
           <div className="bg-white/5 rounded-xl p-6 border border-white/10">
             <h2 className="font-semibold text-white mb-4">Shipping Address</h2>
             <div className="space-y-1 text-white/60">
-              <p>{order.customer.address.street}</p>
+              <p>{order.shippingAddress?.address}</p>
               <p>
-                {order.customer.address.city}, {order.customer.address.state} {order.customer.address.zipCode}
+                {order.shippingAddress?.city}, {order.shippingAddress?.state} {order.shippingAddress?.zipCode}
               </p>
-              <p>{order.customer.address.country}</p>
+              <p>{order.shippingAddress?.country}</p>
             </div>
           </div>
 
@@ -229,31 +265,31 @@ export default function AdminOrderDetail() {
             <div className="space-y-2">
               <div className="flex justify-between text-white/60 text-sm">
                 <span>Subtotal</span>
-                <span>${order.subtotal}</span>
+                <span>${order.financials?.subtotal}</span>
               </div>
               <div className="flex justify-between text-white/60 text-sm">
                 <span>Shipping</span>
-                <span>{order.shipping === 0 ? 'Free' : `$${order.shipping}`}</span>
+                <span>{order.financials?.shippingFee === 0 ? 'Free' : `$${order.financials?.shippingFee}`}</span>
               </div>
-              {order.discount > 0 && (
+              {order.financials?.discount > 0 && (
                 <div className="flex justify-between text-green-400 text-sm">
                   <span>Discount</span>
-                  <span>-${order.discount}</span>
+                  <span>-${order.financials?.discount}</span>
                 </div>
               )}
               <div className="flex justify-between text-white/60 text-sm">
                 <span>Tax</span>
-                <span>${order.tax}</span>
+                <span>${order.financials?.tax}</span>
               </div>
               <div className="flex justify-between text-white font-bold pt-2 border-t border-white/10">
                 <span>Total</span>
-                <span>${order.total}</span>
+                <span>${order.financials?.totalAmount}</span>
               </div>
             </div>
-            
-            {order.promoCode && (
+
+            {order.appliedPromoCode && (
               <div className="mt-4 p-3 bg-green-500/10 rounded-lg">
-                <p className="text-green-400 text-sm">Promo code applied: {order.promoCode}</p>
+                <p className="text-green-400 text-sm">Promo code applied: {order.appliedPromoCode}</p>
               </div>
             )}
           </div>
@@ -278,9 +314,10 @@ export default function AdminOrderDetail() {
             </button>
             <button
               onClick={handleUpdateStatus}
-              className="flex-1 py-2 bg-[#FF4D6D] text-white rounded-lg hover:bg-[#FF4D6D]/90 transition-colors"
+              disabled={saving}
+              className="flex-1 py-2 bg-[#FF4D6D] text-white rounded-lg hover:bg-[#FF4D6D]/90 transition-colors disabled:opacity-50"
             >
-              Confirm
+              {saving ? 'Updating...' : 'Confirm'}
             </button>
           </div>
         </DialogContent>

@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Calendar, Percent, DollarSign, Megaphone, Eye, EyeOff } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { adminCampaignApi } from '@/api/admin/campaignApi';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const brands = ['All', 'Nike', 'Jordan', 'Adidas', 'New Balance', 'Puma', 'Converse', 'Vans'];
 const categories = ['All', 'Lifestyle', 'Basketball', 'Running', 'Skateboarding', 'Casual'];
 
 export default function AdminCampaigns() {
-  const { campaigns, addCampaign, updateCampaign, deleteCampaign } = useStore();
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -22,29 +23,48 @@ export default function AdminCampaigns() {
     category: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchCampaigns = async () => {
+    try {
+      const res = await adminCampaignApi.getAll();
+      setCampaigns(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to load campaigns:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const campaignData = {
       name: formData.name,
       description: formData.description,
-      discountType: formData.discountType,
-      discountValue: Number(formData.discountValue),
-      startDate: new Date(formData.startDate).toISOString(),
-      endDate: new Date(formData.endDate).toISOString(),
-      isActive: true,
+      discount_type: formData.discountType,
+      discount_value: Number(formData.discountValue),
+      start_date: new Date(formData.startDate).toISOString(),
+      end_date: new Date(formData.endDate).toISOString(),
+      is_active: true,
       brand: formData.brand || undefined,
       category: formData.category || undefined,
     };
 
-    if (editingId) {
-      updateCampaign(editingId, campaignData);
-    } else {
-      addCampaign(campaignData);
+    try {
+      if (editingId) {
+        await adminCampaignApi.update(editingId, campaignData);
+      } else {
+        await adminCampaignApi.create(campaignData);
+      }
+      resetForm();
+      setShowAddDialog(false);
+      fetchCampaigns();
+    } catch (err) {
+      console.error('Failed to save campaign:', err);
     }
-    
-    resetForm();
-    setShowAddDialog(false);
   };
 
   const resetForm = () => {
@@ -61,7 +81,7 @@ export default function AdminCampaigns() {
     setEditingId(null);
   };
 
-  const startEdit = (campaign: typeof campaigns[0]) => {
+  const startEdit = (campaign: any) => {
     setFormData({
       name: campaign.name,
       description: campaign.description,
@@ -76,18 +96,43 @@ export default function AdminCampaigns() {
     setShowAddDialog(true);
   };
 
-  const toggleActive = (campaign: typeof campaigns[0]) => {
-    updateCampaign(campaign.id, { isActive: !campaign.isActive });
+  const toggleActive = async (campaign: any) => {
+    try {
+      await adminCampaignApi.update(campaign.id, { is_active: !campaign.isActive });
+      fetchCampaigns();
+    } catch (err) {
+      console.error('Failed to toggle campaign:', err);
+    }
   };
 
-  const isActive = (campaign: typeof campaigns[0]) => {
+  const handleDelete = async (id: string) => {
+    try {
+      await adminCampaignApi.delete(id);
+      setCampaigns(prev => prev.filter(c => c.id !== id));
+    } catch (err) {
+      console.error('Failed to delete campaign:', err);
+    }
+  };
+
+  const isActive = (campaign: any) => {
     const now = new Date();
     return campaign.isActive && new Date(campaign.startDate) <= now && new Date(campaign.endDate) >= now;
   };
 
-  const isExpired = (campaign: typeof campaigns[0]) => {
+  const isExpired = (campaign: any) => {
     return new Date(campaign.endDate) < new Date();
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-white/5 rounded w-48" />
+        <div className="grid md:grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-52 bg-white/5 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -111,16 +156,15 @@ export default function AdminCampaigns() {
 
       {/* Campaigns Grid */}
       <div className="grid md:grid-cols-2 gap-4">
-        {campaigns.map((campaign) => {
+        {campaigns.map((campaign: any) => {
           const active = isActive(campaign);
           const expired = isExpired(campaign);
-          
+
           return (
-            <div 
-              key={campaign.id} 
-              className={`bg-white/5 rounded-xl p-6 border ${
-                active ? 'border-[#FF4D6D]/30' : expired ? 'border-red-500/20' : 'border-white/10'
-              }`}
+            <div
+              key={campaign.id}
+              className={`bg-white/5 rounded-xl p-6 border ${active ? 'border-[#FF4D6D]/30' : expired ? 'border-red-500/20' : 'border-white/10'
+                }`}
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -147,7 +191,7 @@ export default function AdminCampaigns() {
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => deleteCampaign(campaign.id)}
+                    onClick={() => handleDelete(campaign.id)}
                     className="p-2 text-white/60 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -191,11 +235,10 @@ export default function AdminCampaigns() {
                 </div>
                 <button
                   onClick={() => toggleActive(campaign)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    campaign.isActive 
-                      ? 'text-green-400 hover:bg-green-500/10' 
+                  className={`p-2 rounded-lg transition-colors ${campaign.isActive
+                      ? 'text-green-400 hover:bg-green-500/10'
                       : 'text-white/40 hover:bg-white/10'
-                  }`}
+                    }`}
                 >
                   {campaign.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
@@ -221,7 +264,7 @@ export default function AdminCampaigns() {
               {editingId ? 'Edit Campaign' : 'Create Campaign'}
             </DialogTitle>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div>
               <label className="block text-white/70 text-sm mb-1">Campaign Name *</label>

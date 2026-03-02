@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, X } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { adminProductApi } from '@/api/admin/productApi';
+import { productApi } from '@/api/consumer/productApi';
 import type { Product } from '@/types';
 
 const conditions = ['Like New', 'Excellent', 'Very Good', 'Good'];
@@ -13,9 +14,7 @@ const defaultSizes = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12
 export default function AdminProductEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProductById, addProduct, updateProduct } = useStore();
   const isEditing = !!id;
-  const existingProduct = isEditing ? getProductById(id) : null;
 
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
@@ -38,44 +37,74 @@ export default function AdminProductEdit() {
   const [newTag, setNewTag] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (existingProduct) {
-      setFormData(existingProduct);
+    if (isEditing && id) {
+      productApi.getById(id).then(res => {
+        const product = res.data.data || res.data;
+        setFormData(product);
+      }).catch(err => console.error('Failed to load product:', err));
     }
-  }, [existingProduct]);
+  }, [isEditing, id]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.name?.trim()) newErrors.name = 'Name is required';
     if (!formData.sku?.trim()) newErrors.sku = 'SKU is required';
     if (!formData.price || formData.price <= 0) newErrors.price = 'Valid price is required';
     if (!formData.images?.length) newErrors.images = 'At least one image is required';
     if (!formData.description?.trim()) newErrors.description = 'Description is required';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validate()) return;
 
-    if (isEditing && id) {
-      updateProduct(id, formData);
-    } else {
-      addProduct(formData as Omit<Product, 'id' | 'createdAt' | 'updatedAt'>);
+    if (!validate()) return;
+    setSaving(true);
+
+    try {
+      const payload = {
+        name: formData.name,
+        brand: formData.brand,
+        model: formData.model,
+        price: formData.price,
+        original_price: formData.originalPrice,
+        images: formData.images,
+        condition: formData.condition,
+        description: formData.description,
+        features: formData.features,
+        sku: formData.sku,
+        category: formData.category,
+        tags: formData.tags,
+        is_active: formData.isActive,
+        sizes: formData.sizes,
+      };
+
+      if (isEditing && id) {
+        await adminProductApi.update(id, payload);
+      } else {
+        await adminProductApi.create(payload);
+      }
+      navigate('/admin/products');
+    } catch (err: any) {
+      console.error('Failed to save product:', err);
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors);
+      }
+    } finally {
+      setSaving(false);
     }
-    
-    navigate('/admin/products');
   };
 
   const handleSizeChange = (size: number, field: 'available' | 'quantity', value: boolean | number) => {
     setFormData(prev => ({
       ...prev,
-      sizes: prev.sizes?.map(s => 
+      sizes: prev.sizes?.map(s =>
         s.size === size ? { ...s, [field]: value } : s
       ) || [],
     }));
@@ -136,7 +165,7 @@ export default function AdminProductEdit() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <button 
+        <button
           onClick={() => navigate('/admin/products')}
           className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
         >
@@ -287,7 +316,7 @@ export default function AdminProductEdit() {
                   </button>
                 </div>
                 {errors.images && <p className="text-red-400 text-sm">{errors.images}</p>}
-                
+
                 <div className="grid grid-cols-4 gap-4">
                   {formData.images?.map((img, idx) => (
                     <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-white/5">
@@ -425,9 +454,10 @@ export default function AdminProductEdit() {
               </button>
               <button
                 type="submit"
-                className="flex-1 py-3 bg-[#FF4D6D] text-white rounded-lg font-medium hover:bg-[#FF4D6D]/90 transition-colors"
+                disabled={saving}
+                className="flex-1 py-3 bg-[#FF4D6D] text-white rounded-lg font-medium hover:bg-[#FF4D6D]/90 transition-colors disabled:opacity-50"
               >
-                {isEditing ? 'Save Changes' : 'Create Product'}
+                {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Product'}
               </button>
             </div>
           </div>

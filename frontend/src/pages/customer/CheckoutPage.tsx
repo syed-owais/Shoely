@@ -2,18 +2,21 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Check, CreditCard, Truck, ShieldCheck, Lock } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { orderApi } from '@/api/consumer/orderApi';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cart, getCartTotal, createOrder, clearCart, validatePromoCode } = useStore();
-  
+  const { cart, getCartTotal, clearCart } = useStore();
+
   const appliedPromoCode = location.state?.promoCode;
-  
+  const promoDiscount = location.state?.promoDiscount || 0;
+
   const [step, setStep] = useState<'shipping' | 'payment' | 'confirmation'>('shipping');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-  
+  const [error, setError] = useState('');
+
   const [shippingInfo, setShippingInfo] = useState({
     firstName: '',
     lastName: '',
@@ -35,10 +38,7 @@ export default function CheckoutPage() {
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 150 ? 0 : 15;
-  const promoDiscount = appliedPromoCode 
-    ? validatePromoCode(appliedPromoCode, subtotal).discount 
-    : 0;
-  const tax = Math.round(subtotal * 0.0875 * 100) / 100; // 8.75% tax
+  const tax = Math.round(subtotal * 0.0875 * 100) / 100;
   const total = subtotal + shipping + tax - promoDiscount;
 
   if (cart.length === 0 && step !== 'confirmation') {
@@ -55,48 +55,32 @@ export default function CheckoutPage() {
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
-    
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Create order
-    const order = createOrder({
-      customer: {
-        firstName: shippingInfo.firstName,
-        lastName: shippingInfo.lastName,
+    setError('');
+
+    try {
+      const res = await orderApi.checkout({
         email: shippingInfo.email,
+        first_name: shippingInfo.firstName,
+        last_name: shippingInfo.lastName,
         phone: shippingInfo.phone,
-        address: {
-          street: shippingInfo.street,
-          city: shippingInfo.city,
-          state: shippingInfo.state,
-          zipCode: shippingInfo.zipCode,
-          country: shippingInfo.country,
-        },
-      },
-      items: cart.map(item => ({
-        productId: item.productId,
-        name: item.name,
-        brand: item.brand,
-        price: item.price,
-        size: item.size,
-        quantity: item.quantity,
-        image: item.image,
-      })),
-      subtotal,
-      shipping,
-      tax,
-      discount: promoDiscount,
-      total,
-      status: 'pending',
-      promoCode: appliedPromoCode,
-    });
-    
-    setOrderId(order.id);
-    clearCart();
-    setIsProcessing(false);
-    setStep('confirmation');
-    window.scrollTo(0, 0);
+        address: shippingInfo.street,
+        city: shippingInfo.city,
+        state: shippingInfo.state,
+        zip_code: shippingInfo.zipCode,
+        country: shippingInfo.country,
+        promo_code: appliedPromoCode || undefined,
+      });
+
+      const order = res.data.data || res.data;
+      setOrderId(order.orderNumber || order.id);
+      clearCart();
+      setStep('confirmation');
+      window.scrollTo(0, 0);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to place order. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const isShippingValid = () => {
@@ -119,18 +103,16 @@ export default function CheckoutPage() {
         <div className="mb-8">
           <div className="flex items-center justify-center gap-4">
             <div className={`flex items-center gap-2 ${step === 'shipping' ? 'text-[#FF4D6D]' : 'text-white'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step === 'shipping' ? 'bg-[#FF4D6D]' : 'bg-green-500'
-              }`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'shipping' ? 'bg-[#FF4D6D]' : 'bg-green-500'
+                }`}>
                 {step === 'shipping' ? '1' : <Check className="w-4 h-4" />}
               </div>
               <span className="hidden sm:inline font-medium">Shipping</span>
             </div>
             <div className="w-12 h-px bg-white/20" />
             <div className={`flex items-center gap-2 ${step === 'payment' ? 'text-[#FF4D6D]' : 'text-white/40'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step === 'payment' ? 'bg-[#FF4D6D]' : 'bg-white/10'
-              }`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'payment' ? 'bg-[#FF4D6D]' : 'bg-white/10'
+                }`}>
                 2
               </div>
               <span className="hidden sm:inline font-medium">Payment</span>
@@ -326,6 +308,12 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/10 rounded-lg text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handlePaymentSubmit} className="space-y-4">
               <div>
                 <label className="block text-white/70 text-sm mb-1">Card Number</label>
@@ -435,7 +423,7 @@ export default function CheckoutPage() {
           <h1 className="font-display font-bold text-3xl text-white mb-4">Order Confirmed!</h1>
           <p className="text-white/60 mb-2">Thank you for your purchase.</p>
           <p className="text-white font-medium mb-8">Order #{orderId}</p>
-          
+
           <div className="bg-white/5 rounded-xl p-6 mb-8 text-left">
             <p className="text-white/60 text-sm mb-4">
               We&apos;ve sent a confirmation email to <span className="text-white">{shippingInfo.email}</span>

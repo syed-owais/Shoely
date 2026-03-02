@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Search, Package, Truck, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { orderApi } from '@/api/consumer/orderApi';
 import type { OrderStatus } from '@/types';
 
 const statusSteps: { status: OrderStatus; label: string; icon: typeof Package; description: string }[] = [
@@ -12,22 +12,26 @@ const statusSteps: { status: OrderStatus; label: string; icon: typeof Package; d
 ];
 
 export default function OrderTrackingPage() {
-  const { getOrderById } = useStore();
   const [orderId, setOrderId] = useState('');
   const [email, setEmail] = useState('');
-  const [searchedOrder, setSearchedOrder] = useState<ReturnType<typeof getOrderById>>(undefined);
+  const [searchedOrder, setSearchedOrder] = useState<any>(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    const order = getOrderById(orderId.toUpperCase());
-    if (order && order.customer.email.toLowerCase() === email.toLowerCase()) {
+    setLoading(true);
+
+    try {
+      const res = await orderApi.track(orderId.toUpperCase());
+      const order = res.data.data || res.data;
       setSearchedOrder(order);
-    } else {
-      setError('Order not found. Please check your order number and email.');
-      setSearchedOrder(undefined);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Order not found. Please check your order number and email.');
+      setSearchedOrder(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -72,14 +76,14 @@ export default function OrderTrackingPage() {
           </div>
           <button
             type="submit"
-            disabled={!orderId || !email}
+            disabled={!orderId || !email || loading}
             className="w-full py-3 bg-[#FF4D6D] text-white rounded-full font-semibold hover:bg-[#FF4D6D]/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <Search className="w-5 h-5" />
-            Track Order
+            {loading ? 'Searching...' : 'Track Order'}
           </button>
         </div>
-        
+
         {error && (
           <div className="mt-4 p-4 bg-red-500/10 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500" />
@@ -95,18 +99,18 @@ export default function OrderTrackingPage() {
           <div className="bg-white/5 rounded-xl p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <p className="text-white/60 text-sm">Order #{searchedOrder.id}</p>
+                <p className="text-white/60 text-sm">Order #{searchedOrder.orderNumber}</p>
                 <p className="text-white">
-                  Placed on {new Date(searchedOrder.createdAt).toLocaleDateString('en-US', { 
-                    month: 'long', 
-                    day: 'numeric', 
-                    year: 'numeric' 
+                  Placed on {new Date(searchedOrder.createdAt).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
                   })}
                 </p>
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-white/60 text-sm">Total</p>
-                <p className="text-[#FF4D6D] font-bold text-xl">${searchedOrder.total}</p>
+                <p className="text-[#FF4D6D] font-bold text-xl">${searchedOrder.financials?.totalAmount}</p>
               </div>
             </div>
           </div>
@@ -117,7 +121,7 @@ export default function OrderTrackingPage() {
             <div className="relative">
               {/* Progress Line */}
               <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-white/10" />
-              
+
               {/* Steps */}
               <div className="space-y-6">
                 {statusSteps.map((step, index) => {
@@ -125,16 +129,15 @@ export default function OrderTrackingPage() {
                   const currentStatusIndex = getStatusIndex(searchedOrder.status);
                   const isCompleted = index <= currentStatusIndex;
                   const isCurrent = index === currentStatusIndex;
-                  
+
                   return (
                     <div key={step.status} className="relative flex items-start gap-4">
-                      <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center ${
-                        isCompleted 
-                          ? isCurrent 
-                            ? 'bg-[#FF4D6D]' 
+                      <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center ${isCompleted
+                          ? isCurrent
+                            ? 'bg-[#FF4D6D]'
                             : 'bg-green-500'
                           : 'bg-white/10'
-                      }`}>
+                        }`}>
                         <Icon className={`w-4 h-4 ${isCompleted ? 'text-white' : 'text-white/40'}`} />
                       </div>
                       <div className="flex-1 pt-1">
@@ -144,14 +147,14 @@ export default function OrderTrackingPage() {
                         <p className={`text-sm ${isCompleted ? 'text-white/60' : 'text-white/30'}`}>
                           {step.description}
                         </p>
-                        {isCurrent && searchedOrder.trackingNumber && (
-                          <a 
-                            href={searchedOrder.trackingUrl}
+                        {isCurrent && searchedOrder.tracking?.number && (
+                          <a
+                            href={searchedOrder.tracking.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-[#FF4D6D] text-sm mt-1 hover:underline"
                           >
-                            Track shipment: {searchedOrder.trackingNumber}
+                            Track shipment: {searchedOrder.tracking.number}
                           </a>
                         )}
                       </div>
@@ -163,32 +166,34 @@ export default function OrderTrackingPage() {
           </div>
 
           {/* Order Items */}
-          <div className="bg-white/5 rounded-xl p-6">
-            <h2 className="font-semibold text-white mb-4">Order Items</h2>
-            <div className="space-y-4">
-              {searchedOrder.items.map((item, idx) => (
-                <div key={idx} className="flex gap-4">
-                  <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
-                  <div className="flex-1">
-                    <p className="text-white font-medium">{item.name}</p>
-                    <p className="text-white/60 text-sm">{item.brand}</p>
-                    <p className="text-white/60 text-sm">Size: US {item.size}</p>
+          {searchedOrder.items && (
+            <div className="bg-white/5 rounded-xl p-6">
+              <h2 className="font-semibold text-white mb-4">Order Items</h2>
+              <div className="space-y-4">
+                {searchedOrder.items.map((item: any, idx: number) => (
+                  <div key={idx} className="flex gap-4">
+                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
+                    <div className="flex-1">
+                      <p className="text-white font-medium">{item.name}</p>
+                      <p className="text-white/60 text-sm">{item.brand}</p>
+                      <p className="text-white/60 text-sm">Size: US {item.size}</p>
+                    </div>
+                    <p className="text-white font-medium">${item.price * item.quantity}</p>
                   </div>
-                  <p className="text-white font-medium">${item.price * item.quantity}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Shipping Address */}
           <div className="bg-white/5 rounded-xl p-6">
             <h2 className="font-semibold text-white mb-4">Shipping Address</h2>
-            <p className="text-white">{searchedOrder.customer.firstName} {searchedOrder.customer.lastName}</p>
-            <p className="text-white/60">{searchedOrder.customer.address.street}</p>
+            <p className="text-white">{searchedOrder.customer?.firstName} {searchedOrder.customer?.lastName}</p>
+            <p className="text-white/60">{searchedOrder.shippingAddress?.address}</p>
             <p className="text-white/60">
-              {searchedOrder.customer.address.city}, {searchedOrder.customer.address.state} {searchedOrder.customer.address.zipCode}
+              {searchedOrder.shippingAddress?.city}, {searchedOrder.shippingAddress?.state} {searchedOrder.shippingAddress?.zipCode}
             </p>
-            <p className="text-white/60">{searchedOrder.customer.address.country}</p>
+            <p className="text-white/60">{searchedOrder.shippingAddress?.country}</p>
           </div>
         </div>
       )}

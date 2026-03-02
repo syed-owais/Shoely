@@ -1,47 +1,84 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { adminProductApi } from '@/api/admin/productApi';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import type { Product } from '@/types';
 
 export default function AdminProducts() {
-  const { products, deleteProduct, updateProduct } = useStore();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  const fetchProducts = async () => {
+    try {
+      const res = await adminProductApi.getAll();
+      setProducts(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to load products:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
   const filteredProducts = products.filter(product => {
-    const matchesSearch = 
+    const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = 
+
+    const matchesStatus =
       filterStatus === 'all' ? true :
-      filterStatus === 'active' ? product.isActive :
-      !product.isActive;
-    
+        filterStatus === 'active' ? product.isActive :
+          !product.isActive;
+
     return matchesSearch && matchesStatus;
   });
 
-  const handleToggleStatus = (product: typeof products[0]) => {
-    updateProduct(product.id, { isActive: !product.isActive });
+  const handleToggleStatus = async (product: Product) => {
+    try {
+      await adminProductApi.update(product.id, { is_active: !product.isActive });
+      fetchProducts();
+    } catch (err) {
+      console.error('Failed to toggle product status:', err);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteProduct(id);
-    setDeleteConfirm(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await adminProductApi.delete(id);
+      setProducts(prev => prev.filter(p => String(p.id) !== id));
+      setDeleteConfirm(null);
+    } catch (err) {
+      console.error('Failed to delete product:', err);
+    }
   };
 
-  const getStockStatus = (product: typeof products[0]) => {
+  const getStockStatus = (product: Product) => {
     const totalStock = product.sizes.reduce((sum, s) => sum + s.quantity, 0);
     const lowStock = product.sizes.some(s => s.quantity <= 2 && s.quantity > 0);
     const outOfStock = totalStock === 0;
-    
+
     if (outOfStock) return { label: 'Out of Stock', color: 'bg-red-500/20 text-red-400' };
     if (lowStock) return { label: 'Low Stock', color: 'bg-yellow-500/20 text-yellow-400' };
     return { label: 'In Stock', color: 'bg-green-500/20 text-green-400' };
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-white/5 rounded w-48" />
+        <div className="h-12 bg-white/5 rounded-lg" />
+        <div className="h-64 bg-white/5 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -51,7 +88,7 @@ export default function AdminProducts() {
           <h1 className="text-2xl font-bold text-white">Products</h1>
           <p className="text-white/60">Manage your sneaker inventory</p>
         </div>
-        <Link 
+        <Link
           to="/admin/products/new"
           className="inline-flex items-center gap-2 px-4 py-2 bg-[#FF4D6D] text-white rounded-lg font-medium hover:bg-[#FF4D6D]/90 transition-colors"
         >
@@ -104,8 +141,8 @@ export default function AdminProducts() {
                   <tr key={product.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <img 
-                          src={product.images[0]} 
+                        <img
+                          src={product.images[0]}
                           alt={product.name}
                           className="w-12 h-12 object-cover rounded-lg"
                         />
@@ -132,11 +169,10 @@ export default function AdminProducts() {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => handleToggleStatus(product)}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
-                          product.isActive 
-                            ? 'bg-green-500/20 text-green-400' 
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${product.isActive
+                            ? 'bg-green-500/20 text-green-400'
                             : 'bg-white/10 text-white/60'
-                        }`}
+                          }`}
                       >
                         {product.isActive ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                         {product.isActive ? 'Active' : 'Inactive'}
@@ -144,21 +180,21 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        <Link 
+                        <Link
                           to={`/product/${product.id}`}
                           target="_blank"
                           className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
-                        <Link 
+                        <Link
                           to={`/admin/products/edit/${product.id}`}
                           className="p-2 text-white/60 hover:text-[#FF4D6D] hover:bg-white/10 rounded-lg transition-colors"
                         >
                           <Edit className="w-4 h-4" />
                         </Link>
                         <button
-                          onClick={() => setDeleteConfirm(product.id)}
+                          onClick={() => setDeleteConfirm(String(product.id))}
                           className="p-2 text-white/60 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -171,7 +207,7 @@ export default function AdminProducts() {
             </tbody>
           </table>
         </div>
-        
+
         {filteredProducts.length === 0 && (
           <div className="p-12 text-center">
             <p className="text-white/60">No products found</p>
