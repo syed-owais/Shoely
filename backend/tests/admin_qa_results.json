@@ -1,0 +1,212 @@
+[
+    {
+        "id": "TC-A-AUTH-001",
+        "name": "Login with Valid Credentials",
+        "status": "PASS",
+        "expected": "HTTP 200 + token returned",
+        "details": "HTTP 200, token=present"
+    },
+    {
+        "id": "TC-A-AUTH-002",
+        "name": "Login with Invalid Password",
+        "status": "PASS",
+        "expected": "HTTP 422 or 401 with error message",
+        "details": "HTTP 422, body={\"message\":\"These credentials do not match our records.\",\"errors\":{\"email\":[\"These credentials do not match our records.\"]}}"
+    },
+    {
+        "id": "TC-A-AUTH-003",
+        "name": "Login with Consumer Credentials",
+        "status": "PASS",
+        "expected": "Rejected (403\/422\/401)",
+        "details": "HTTP 422, body={\"message\":\"Access denied. Admin privileges required.\",\"errors\":{\"email\":[\"Access denied. Admin privileges required.\"]}}"
+    },
+    {
+        "id": "TC-A-AUTH-004",
+        "name": "Protected Route Without Token",
+        "status": "PASS",
+        "expected": "HTTP 401 Unauthenticated",
+        "details": "HTTP 401"
+    },
+    {
+        "id": "TC-A-AUTH-005",
+        "name": "Logout",
+        "status": "PASS",
+        "expected": "HTTP 200\/204 on logout",
+        "details": "HTTP 200"
+    },
+    {
+        "id": "TC-A-AUTH-008",
+        "name": "Consumer Token on Admin API",
+        "status": "PASS",
+        "expected": "HTTP 403 Forbidden",
+        "details": "HTTP 403, body={\"message\":\"Forbidden. Admin access required.\"}"
+    },
+    {
+        "id": "TC-A-DASH-001",
+        "name": "Dashboard Stats Load",
+        "status": "PASS",
+        "expected": "HTTP 200 with stats data",
+        "details": "HTTP 200, keys=data"
+    },
+    {
+        "id": "TC-A-DASH-005",
+        "name": "Empty State Dashboard (0 orders after fresh seed)",
+        "status": "PASS",
+        "expected": "Stats show 0 orders, $0 revenue on fresh seed",
+        "details": "Orders=N\/A, Revenue=N\/A"
+    },
+    {
+        "id": "TC-A-PROD-001",
+        "name": "Products List Load",
+        "status": "PASS",
+        "expected": "HTTP 200 with products list",
+        "details": "HTTP 200, products count=8"
+    },
+    {
+        "id": "TC-A-PROD-005",
+        "name": "Create New Product",
+        "status": "FAIL",
+        "expected": "HTTP 201\/200 with product data",
+        "details": "HTTP 422, productId="
+    },
+    {
+        "id": "TC-A-PROD-006",
+        "name": "Create Product Validation (empty)",
+        "status": "PASS",
+        "expected": "HTTP 422 with validation errors",
+        "details": "HTTP 422, errors=[\"name\",\"brand\",\"model\",\"price\",\"condition\",\"sku\",\"category\",\"sizes\"]"
+    },
+    {
+        "id": "TC-A-PROD-007",
+        "name": "Edit Existing Product",
+        "status": "FAIL",
+        "expected": "HTTP 200",
+        "details": "SKIPPED: No product created"
+    },
+    {
+        "id": "TC-A-PROD-004",
+        "name": "Delete Product",
+        "status": "FAIL",
+        "expected": "HTTP 200\/204",
+        "details": "SKIPPED: No product"
+    },
+    {
+        "id": "TC-A-ORD-001",
+        "name": "Orders List Load",
+        "status": "PASS",
+        "expected": "HTTP 200 with orders list",
+        "details": "HTTP 200, orders=0"
+    },
+    {
+        "id": "TC-A-ORD-002",
+        "name": "Filter by Status \u2014 Pending",
+        "status": "PASS",
+        "expected": "HTTP 200 with filtered orders",
+        "details": "HTTP 200"
+    },
+    {
+        "id": "TC-A-ORD-003",
+        "name": "Filter by Status \u2014 Shipped",
+        "status": "PASS",
+        "expected": "HTTP 200",
+        "details": "HTTP 200"
+    },
+    {
+        "id": "TC-A-ORD-004",
+        "name": "Filter by Status \u2014 Delivered",
+        "status": "PASS",
+        "expected": "HTTP 200",
+        "details": "HTTP 200"
+    },
+    {
+        "id": "TC-A-PROMO-001",
+        "name": "Promo Codes List Load",
+        "status": "PASS",
+        "expected": "HTTP 200 with promo codes",
+        "details": "HTTP 200, count=2"
+    },
+    {
+        "id": "TC-A-PROMO-002",
+        "name": "Create Percentage Promo Code",
+        "status": "FAIL",
+        "expected": "HTTP 201\/200 with promo data",
+        "details": "HTTP 422, promoId="
+    },
+    {
+        "id": "TC-A-PROMO-003",
+        "name": "Create Fixed Amount Promo Code",
+        "status": "PASS",
+        "expected": "HTTP 201\/200",
+        "details": "HTTP 201, promoId=3"
+    },
+    {
+        "id": "TC-A-PROMO-010",
+        "name": "Duplicate Code Prevention",
+        "status": "PASS",
+        "expected": "HTTP 422 with duplicate error",
+        "details": "HTTP 422, body={\"message\":\"The code has already been taken.\",\"errors\":{\"code\":[\"The code has already been taken.\"]}}"
+    },
+    {
+        "id": "TC-A-PROMO-005",
+        "name": "Delete Promo Code",
+        "status": "PASS",
+        "expected": "HTTP 200\/204",
+        "details": "HTTP 204"
+    },
+    {
+        "id": "TC-A-CAMP-001",
+        "name": "Campaigns List Load",
+        "status": "PASS",
+        "expected": "HTTP 200 with campaigns",
+        "details": "HTTP 200, count=2"
+    },
+    {
+        "id": "TC-A-CAMP-002",
+        "name": "Create Percentage Campaign",
+        "status": "PASS",
+        "expected": "HTTP 201\/200 with campaign data",
+        "details": "HTTP 201, campId=3"
+    },
+    {
+        "id": "TC-A-CAMP-003",
+        "name": "Create Fixed Amount Campaign",
+        "status": "PASS",
+        "expected": "HTTP 201\/200",
+        "details": "HTTP 201, campId=4"
+    },
+    {
+        "id": "TC-A-CAMP-004",
+        "name": "Edit Campaign",
+        "status": "PASS",
+        "expected": "HTTP 200",
+        "details": "HTTP 200, new value=N\/A"
+    },
+    {
+        "id": "TC-A-CAMP-005",
+        "name": "Delete Campaign",
+        "status": "PASS",
+        "expected": "HTTP 200\/204",
+        "details": "HTTP 204"
+    },
+    {
+        "id": "TC-A-SEC-001",
+        "name": "RBAC \u2014 Consumer Token on Admin Endpoints",
+        "status": "PASS",
+        "expected": "HTTP 403 Forbidden",
+        "details": "HTTP 403"
+    },
+    {
+        "id": "TC-A-SEC-002",
+        "name": "RBAC \u2014 No Token on Admin Endpoints",
+        "status": "PASS",
+        "expected": "HTTP 401 Unauthenticated",
+        "details": "HTTP 401"
+    },
+    {
+        "id": "TC-A-SEC-005",
+        "name": "Rate Limiting \u2014 Login Brute Force",
+        "status": "FAIL",
+        "expected": "HTTP 429 after ~5 attempts",
+        "details": "No rate limit after 10 attempts (last code=422)"
+    }
+]

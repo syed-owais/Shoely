@@ -19,6 +19,10 @@ class ProductService
             $query->byBrand($filters['brand']);
         }
 
+        if (!empty($filters['condition'])) {
+            $query->byCondition($filters['condition']);
+        }
+
         if (!empty($filters['category'])) {
             $query->byCategory($filters['category']);
         }
@@ -41,11 +45,13 @@ class ProductService
             });
         }
 
-        $sort = $filters['sort'] ?? 'newest';
+        $sort = $filters['sort_by'] ?? $filters['sort'] ?? 'newest';
         switch ($sort) {
+            case 'price-asc':
             case 'price_asc':
                 $query->orderBy('price', 'asc');
                 break;
+            case 'price-desc':
             case 'price_desc':
                 $query->orderBy('price', 'desc');
                 break;

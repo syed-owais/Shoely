@@ -17,88 +17,25 @@ const sortOptions = [
   { value: 'price-desc', label: 'Price: High to Low' },
 ];
 
-export default function ShopPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const productsRef = useRef<HTMLDivElement>(null);
-
-  const [filters, setFilters] = useState({
-    brand: searchParams.get('brand') || 'All',
-    condition: 'All',
-    minPrice: '',
-    maxPrice: '',
-    search: searchParams.get('search') || '',
-    sortBy: 'newest',
-  });
-
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const params: Record<string, any> = {};
-        if (filters.brand !== 'All') params.brand = filters.brand;
-        if (filters.condition !== 'All') params.condition = filters.condition;
-        if (filters.minPrice) params.min_price = filters.minPrice;
-        if (filters.maxPrice) params.max_price = filters.maxPrice;
-        if (filters.search) params.search = filters.search;
-        if (filters.sortBy) params.sort_by = filters.sortBy;
-
-        const res = await productApi.getAll(params);
-        setProducts(res.data.data || []);
-      } catch (err) {
-        console.error('Failed to load products:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-  }, [filters]);
-
-  useEffect(() => {
-    if (loading) return;
-    // Animate products on load
-    if (productsRef.current) {
-      gsap.fromTo(
-        productsRef.current.querySelectorAll('.product-item'),
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out' }
-      );
-    }
-  }, [loading, products]);
-
-  const updateFilter = (key: string, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-
-    // Update URL params
-    const params = new URLSearchParams(searchParams);
-    if (value && value !== 'All') {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-    setSearchParams(params);
+interface FilterPanelProps {
+  isMobile?: boolean;
+  filters: {
+    brand: string;
+    condition: string;
+    minPrice: string;
+    maxPrice: string;
+    search: string;
+    sortBy: string;
   };
+  updateFilter: (key: string, value: string) => void;
+  updateTextFilter: (key: string, value: string) => void;
+  clearFilters: () => void;
+}
 
-  const clearFilters = () => {
-    setFilters({
-      brand: 'All',
-      condition: 'All',
-      minPrice: '',
-      maxPrice: '',
-      search: '',
-      sortBy: 'newest',
-    });
-    setSearchParams(new URLSearchParams());
-  };
-
+const FilterPanel = ({ isMobile = false, filters, updateFilter, updateTextFilter, clearFilters }: FilterPanelProps) => {
   const hasActiveFilters = filters.brand !== 'All' || filters.condition !== 'All' || filters.minPrice || filters.maxPrice || filters.search;
 
-  // Filter Panel Component
-  const FilterPanel = ({ isMobile = false }: { isMobile?: boolean }) => (
+  return (
     <div className={`space-y-6 ${isMobile ? '' : 'sticky top-24'}`}>
       {/* Search */}
       <div>
@@ -108,7 +45,7 @@ export default function ShopPage() {
             type="text"
             placeholder="Search products..."
             value={filters.search}
-            onChange={(e) => updateFilter('search', e.target.value)}
+            onChange={(e) => updateTextFilter('search', e.target.value)}
             className="w-full bg-white/10 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-white/50 focus:outline-none focus:border-[#FF4D6D]/50"
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
@@ -124,8 +61,8 @@ export default function ShopPage() {
               key={brand}
               onClick={() => updateFilter('brand', brand)}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filters.brand === brand
-                  ? 'bg-[#FF4D6D]/20 text-[#FF4D6D]'
-                  : 'text-white/70 hover:bg-white/5 hover:text-white'
+                ? 'bg-[#FF4D6D]/20 text-[#FF4D6D]'
+                : 'text-white/70 hover:bg-white/5 hover:text-white'
                 }`}
             >
               {brand}
@@ -143,8 +80,8 @@ export default function ShopPage() {
               key={condition}
               onClick={() => updateFilter('condition', condition)}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filters.condition === condition
-                  ? 'bg-[#FF4D6D]/20 text-[#FF4D6D]'
-                  : 'text-white/70 hover:bg-white/5 hover:text-white'
+                ? 'bg-[#FF4D6D]/20 text-[#FF4D6D]'
+                : 'text-white/70 hover:bg-white/5 hover:text-white'
                 }`}
             >
               {condition}
@@ -161,7 +98,7 @@ export default function ShopPage() {
             type="number"
             placeholder="Min"
             value={filters.minPrice}
-            onChange={(e) => updateFilter('minPrice', e.target.value)}
+            onChange={(e) => updateTextFilter('minPrice', e.target.value)}
             className="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder:text-white/50 focus:outline-none focus:border-[#FF4D6D]/50"
           />
           <span className="text-white/50">-</span>
@@ -169,7 +106,7 @@ export default function ShopPage() {
             type="number"
             placeholder="Max"
             value={filters.maxPrice}
-            onChange={(e) => updateFilter('maxPrice', e.target.value)}
+            onChange={(e) => updateTextFilter('maxPrice', e.target.value)}
             className="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder:text-white/50 focus:outline-none focus:border-[#FF4D6D]/50"
           />
         </div>
@@ -178,13 +115,110 @@ export default function ShopPage() {
       {hasActiveFilters && (
         <button
           onClick={clearFilters}
-          className="w-full py-2.5 text-[#FF4D6D] text-sm font-medium hover:underline"
+          className="w-full mt-4 py-2 border border-[#FF4D6D] text-[#FF4D6D] rounded-lg text-sm font-medium hover:bg-[#FF4D6D] hover:text-white transition-colors"
         >
           Clear All Filters
         </button>
       )}
     </div>
   );
+};
+
+export default function ShopPage() {
+  const [searchParams] = useSearchParams();
+  const productsRef = useRef<HTMLDivElement>(null);
+
+  const [filters, setFilters] = useState({
+    brand: searchParams.get('brand') || 'All',
+    condition: 'All',
+    minPrice: '',
+    maxPrice: '',
+    search: searchParams.get('search') || '',
+    sortBy: 'newest',
+  });
+
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Core fetch function that accepts a specific filter state
+  const fetchProductsWithFilters = async (f: typeof filters) => {
+    setLoading(true);
+    try {
+      const params: Record<string, any> = {};
+      if (f.brand !== 'All') params.brand = f.brand;
+      if (f.condition !== 'All') params.condition = f.condition;
+      if (f.minPrice) params.min_price = f.minPrice;
+      if (f.maxPrice) params.max_price = f.maxPrice;
+      if (f.search) params.search = f.search;
+      if (f.sortBy) params.sort_by = f.sortBy;
+
+      const res = await productApi.getAll(params);
+      setProducts(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to load products:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchProductsWithFilters(filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounce effect for TEXT inputs (search, minPrice, maxPrice)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Premium UX: require at least 3 characters to search (unless it's empty/cleared)
+      if (filters.search.length > 0 && filters.search.length < 3) {
+        return;
+      }
+      fetchProductsWithFilters(filters);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [filters.search, filters.minPrice, filters.maxPrice]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (productsRef.current) {
+      gsap.fromTo(
+        productsRef.current.querySelectorAll('.product-item'),
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out' }
+      );
+    }
+  }, [loading, products]);
+
+  // Button filters — update state and fetch immediately
+  const updateFilter = (key: string, value: string) => {
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    fetchProductsWithFilters(newFilters);
+  };
+
+  // Text inputs — update state ONLY (the useEffect above handles the debounced fetch)
+  const updateTextFilter = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    const defaultFilters = {
+      brand: 'All',
+      condition: 'All',
+      minPrice: '',
+      maxPrice: '',
+      search: '',
+      sortBy: 'newest',
+    };
+    setFilters(defaultFilters);
+    fetchProductsWithFilters(defaultFilters);
+  };
+
+  const hasActiveFilters = filters.brand !== 'All' || filters.condition !== 'All' || filters.minPrice || filters.maxPrice || filters.search;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -217,7 +251,7 @@ export default function ShopPage() {
                 <SheetTitle className="text-white">Filters</SheetTitle>
               </SheetHeader>
               <div className="mt-6">
-                <FilterPanel isMobile />
+                <FilterPanel isMobile filters={filters} updateFilter={updateFilter} updateTextFilter={updateTextFilter} clearFilters={clearFilters} />
               </div>
             </SheetContent>
           </Sheet>
@@ -293,7 +327,7 @@ export default function ShopPage() {
       <div className="flex gap-8">
         {/* Sidebar Filters - Desktop */}
         <aside className="hidden lg:block w-64 flex-shrink-0">
-          <FilterPanel />
+          <FilterPanel filters={filters} updateFilter={updateFilter} updateTextFilter={updateTextFilter} clearFilters={clearFilters} />
         </aside>
 
         {/* Products Grid */}
@@ -321,8 +355,8 @@ export default function ShopPage() {
             </div>
           ) : (
             <div className={`grid gap-4 lg:gap-6 ${viewMode === 'grid'
-                ? 'grid-cols-2 lg:grid-cols-3'
-                : 'grid-cols-1'
+              ? 'grid-cols-2 lg:grid-cols-3'
+              : 'grid-cols-1'
               }`}>
               {products.map((product) => (
                 <Link
@@ -365,8 +399,8 @@ export default function ShopPage() {
                     </div>
 
                     <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${product.condition === 'Like New' ? 'bg-green-500/20 text-green-400' :
-                        product.condition === 'Excellent' ? 'bg-blue-500/20 text-blue-400' :
-                          'bg-yellow-500/20 text-yellow-400'
+                      product.condition === 'Excellent' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-yellow-500/20 text-yellow-400'
                       }`}>
                       {product.condition}
                     </span>

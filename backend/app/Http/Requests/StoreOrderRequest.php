@@ -26,6 +26,10 @@ class StoreOrderRequest extends FormRequest
             'payment_method' => ['required', 'string', 'in:credit_card,paypal,apple_pay,google_pay,cod'],
             'shipping_method' => ['nullable', 'string', 'in:standard,express,overnight'],
             'promo_code' => ['nullable', 'string', 'exists:promo_codes,code'],
+            'items' => ['nullable', 'array', 'min:1'],
+            'items.*.product_id' => ['required_with:items', 'exists:products,id'],
+            'items.*.size' => ['required_with:items', 'numeric'],
+            'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],
         ];
     }
 }

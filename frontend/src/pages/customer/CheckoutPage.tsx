@@ -69,6 +69,11 @@ export default function CheckoutPage() {
         zip_code: shippingInfo.zipCode,
         country: shippingInfo.country,
         promo_code: appliedPromoCode || undefined,
+        items: cart.map(item => ({
+          product_id: item.productId,
+          size: item.size,
+          quantity: item.quantity,
+        })),
       });
 
       const order = res.data.data || res.data;

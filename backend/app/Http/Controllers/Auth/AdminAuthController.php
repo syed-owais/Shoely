@@ -30,9 +30,9 @@ class AdminAuthController extends Controller
         }
 
         if (!$user->isAdmin()) {
-            throw ValidationException::withMessages([
-                'email' => "Access denied. Admin privileges required.",
-            ]);
+            return response()->json([
+                'message' => 'Access denied. Admin privileges required.'
+            ], 403);
         }
 
         // Revoke older admin tokens if desired (optional, but good for security)

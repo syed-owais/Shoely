@@ -58,6 +58,11 @@ class Product extends Model
         return $query->where('brand', $brand);
     }
 
+    public function scopeByCondition($query, string $condition)
+    {
+        return $query->where('condition', $condition);
+    }
+
     public function scopeByCategory($query, string $category)
     {
         return $query->where('category', $category);

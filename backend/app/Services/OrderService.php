@@ -15,19 +15,40 @@ class OrderService
     /**
      * Complete checkout and generate an order from the user's cart.
      */
-    public function checkout(User $user, array $data): Order
+    public function checkout(?User $user, array $data): Order
     {
-        $cart = $user->cart()->with('items.product')->first();
+        if ($user) {
+            $cart = $user->cart()->with('items.product')->first();
+            if (!$cart || $cart->items->isEmpty()) {
+                abort(400, 'Cart is empty. Cannot proceed to checkout.');
+            }
+            $items = $cart->items;
+        } else {
+            if (empty($data['items'])) {
+                abort(400, 'Cart items are required for guest checkout.');
+            }
+            $productIds = collect($data['items'])->pluck('product_id')->unique();
+            $products = \App\Models\Product::whereIn('id', $productIds)->get()->keyBy('id');
 
-        if (!$cart || $cart->items->isEmpty()) {
-            abort(400, 'Cart is empty. Cannot proceed to checkout.');
+            $items = collect($data['items'])->map(function ($itemData) use ($products) {
+                $product = $products->get($itemData['product_id']);
+                if (!$product)
+                    abort(404, 'Product not found.');
+                return (object) [
+                    'product_id' => $itemData['product_id'],
+                    'size' => $itemData['size'],
+                    'quantity' => $itemData['quantity'],
+                    'product' => $product
+                ];
+            });
+            $cart = null;
         }
 
-        return DB::transaction(function () use ($user, $data, $cart) {
+        return DB::transaction(function () use ($user, $data, $cart, $items) {
             $subtotal = 0;
 
             // Pre-calculate subtotal and check stock (Double-check before commit)
-            foreach ($cart->items as $item) {
+            foreach ($items as $item) {
                 $subtotal += $item->product->price * $item->quantity;
 
                 $productSize = ProductSize::where('product_id', $item->product_id)
@@ -69,7 +90,7 @@ class OrderService
 
             // Create Order
             $order = Order::create([
-                'user_id' => $user->id,
+                'user_id' => $user ? $user->id : null,
                 'order_number' => Order::generateOrderNumber(),
                 'email' => $data['email'],
                 'first_name' => $data['first_name'],
@@ -90,7 +111,7 @@ class OrderService
             ]);
 
             // Move Cart Items to Order Items & Deduct Stock
-            foreach ($cart->items as $item) {
+            foreach ($items as $item) {
                 // Deduct stock
                 ProductSize::where('product_id', $item->product_id)
                     ->where('size', $item->size)
@@ -104,12 +125,14 @@ class OrderService
                     'price' => $item->product->price,
                     'quantity' => $item->quantity,
                     'size' => $item->size,
-                    'image' => $item->product->images[0] ?? null,
+                    'image' => (is_array($item->product->images) && count($item->product->images) > 0) ? $item->product->images[0] : null,
                 ]);
             }
 
             // Clear Cart
-            $cart->items()->delete();
+            if ($cart) {
+                $cart->items()->delete();
+            }
 
             return $order->load('items');
         });

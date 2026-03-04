@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Search, Menu, X } from 'lucide-react';
+import { ShoppingBag, Search, Menu, X, User, LogOut } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -9,8 +9,8 @@ export default function CustomerLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-  const { getCartCount } = useStore();
-  
+  const { getCartCount, isAuthenticated, logout } = useStore();
+
   const cartCount = getCartCount();
 
   useEffect(() => {
@@ -39,9 +39,8 @@ export default function CustomerLayout() {
     <div className="min-h-screen bg-[#0B0B0D] flex flex-col">
       {/* Header */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled ? 'bg-[#0B0B0D]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
-        }`}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-[#0B0B0D]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
+          }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20">
@@ -110,6 +109,24 @@ export default function CustomerLayout() {
                   </span>
                 )}
               </Link>
+
+              {/* Auth */}
+              {isAuthenticated ? (
+                <div className="hidden md:flex items-center space-x-2 border-l border-white/10 pl-4 ml-2">
+                  <Link to="/orders" className="p-2 text-white/70 hover:text-white transition-colors" title="My Orders">
+                    <User className="w-5 h-5 lg:w-6 lg:h-6" />
+                  </Link>
+                  <button onClick={() => { logout(); navigate('/'); }} className="p-2 text-white/70 hover:text-[#FF4D6D] transition-colors" title="Logout">
+                    <LogOut className="w-5 h-5 lg:w-6 lg:h-6" />
+                  </button>
+                </div>
+              ) : (
+                <div className="hidden md:flex items-center border-l border-white/10 pl-4 ml-2">
+                  <Link to="/login" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
+                    Sign In
+                  </Link>
+                </div>
+              )}
 
               {/* Mobile Menu Button */}
               <button

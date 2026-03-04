@@ -12,6 +12,7 @@ import CartPage from '@/pages/customer/CartPage';
 import CheckoutPage from '@/pages/customer/CheckoutPage';
 import OrderTrackingPage from '@/pages/customer/OrderTrackingPage';
 import OrderDetailPage from '@/pages/customer/OrderDetailPage';
+import OrdersPage from '@/pages/customer/OrdersPage';
 import LoginPage from '@/pages/customer/LoginPage';
 import RegisterPage from '@/pages/customer/RegisterPage';
 
@@ -25,6 +26,16 @@ import AdminOrders from '@/pages/admin/AdminOrders';
 import AdminOrderDetail from '@/pages/admin/AdminOrderDetail';
 import AdminPromoCodes from '@/pages/admin/AdminPromoCodes';
 import AdminCampaigns from '@/pages/admin/AdminCampaigns';
+
+// Customer Protected Route - requires user to be logged in
+function CustomerProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useStore();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: window.location.pathname }} />;
+  }
+  return <>{children}</>;
+}
 
 // Admin Protected Route - requires admin role
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -59,6 +70,11 @@ function App() {
           <Route path="checkout" element={<CheckoutPage />} />
           <Route path="track-order" element={<OrderTrackingPage />} />
           <Route path="order/:id" element={<OrderDetailPage />} />
+          <Route path="orders" element={
+            <CustomerProtectedRoute>
+              <OrdersPage />
+            </CustomerProtectedRoute>
+          } />
         </Route>
 
         {/* Auth Routes */}

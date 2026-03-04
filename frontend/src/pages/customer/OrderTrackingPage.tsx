@@ -24,7 +24,7 @@ export default function OrderTrackingPage() {
     setLoading(true);
 
     try {
-      const res = await orderApi.track(orderId.toUpperCase());
+      const res = await orderApi.track(orderId.toUpperCase(), email);
       const order = res.data.data || res.data;
       setSearchedOrder(order);
     } catch (err: any) {
@@ -133,10 +133,10 @@ export default function OrderTrackingPage() {
                   return (
                     <div key={step.status} className="relative flex items-start gap-4">
                       <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center ${isCompleted
-                          ? isCurrent
-                            ? 'bg-[#FF4D6D]'
-                            : 'bg-green-500'
-                          : 'bg-white/10'
+                        ? isCurrent
+                          ? 'bg-[#FF4D6D]'
+                          : 'bg-green-500'
+                        : 'bg-white/10'
                         }`}>
                         <Icon className={`w-4 h-4 ${isCompleted ? 'text-white' : 'text-white/40'}`} />
                       </div>

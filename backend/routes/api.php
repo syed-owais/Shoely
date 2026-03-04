@@ -63,13 +63,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/cart/sync', [CartController::class, 'sync']);
 
     // Order Endpoints
-    Route::post('/orders/checkout', [OrderController::class, 'checkout']);
+    Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
 
-    // Promo Code Endpoints (Consumer/Checkout phase)
-    Route::post('/promo-codes/validate', [PromoCodeController::class, 'validateCode']);
 });
+
+// Guest-accessible order checkout
+Route::post('/orders/checkout', [OrderController::class, 'checkout']);
+
+// Promo Code Endpoints (Consumer/Checkout phase)
+Route::post('/promo-codes/validate', [PromoCodeController::class, 'validateCode']);
 
 // ==========================================
 // ADMIN PROTECTED ROUTES
@@ -122,5 +126,5 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 });
 
 // Admin Auth
-Route::post('/admin/login', [AdminAuthController::class, 'store']);
+Route::post('/admin/login', [AdminAuthController::class, 'store'])->middleware('throttle:5,1');
 Route::post('/admin/logout', [AdminAuthController::class, 'destroy'])->middleware('auth:sanctum');

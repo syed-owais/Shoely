@@ -21,6 +21,6 @@ export const orderApi = {
     getById: (id: string | number) =>
         api.get(`/api/orders/${id}`),
 
-    track: (orderNumber: string) =>
-        api.post(`/api/orders/track/${orderNumber}`),
+    track: (orderNumber: string, email: string) =>
+        api.post(`/api/orders/track/${orderNumber}`, { email }),
 };
