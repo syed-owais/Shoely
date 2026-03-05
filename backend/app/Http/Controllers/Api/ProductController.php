@@ -2,96 +2,101 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Classes\RestAPI;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Services\ProductService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProductController extends Controller
 {
-    public function __construct(
-        private readonly ProductService $productService
-    ) {
-    }
-
     /**
      * Display a listing of active products (Public API).
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
-        $products = $this->productService->getProducts(
+        $products = ProductService::getProducts(
             $request->all(),
             $request->integer('per_page', 12)
         );
 
-        return ProductResource::collection($products);
+        return RestAPI::setPagination($products)
+            ->response(ProductResource::collection($products)->resolve());
     }
 
     /**
      * Display featured products (Public API).
      */
-    public function featured(Request $request): AnonymousResourceCollection
+    public function featured(Request $request): JsonResponse
     {
-        $products = $this->productService->getFeaturedProducts($request->integer('limit', 4));
+        $products = ProductService::getFeaturedProducts($request->integer('limit', 4));
 
-        return ProductResource::collection($products);
+        return RestAPI::response(ProductResource::collection($products)->resolve());
     }
 
     /**
      * Display the specified product (Public API).
      */
-    public function show(Product $product): ProductResource
+    public function show(Product $product): JsonResponse
     {
         abort_if(!$product->is_active, 404, 'Product not found');
 
         $product->load('sizes');
 
-        return new ProductResource($product);
+        return RestAPI::response(new ProductResource($product));
     }
 
     /**
      * Display all products including inactive (Admin API).
      */
-    public function adminIndex(Request $request): AnonymousResourceCollection
+    public function adminIndex(Request $request): JsonResponse
     {
         $products = Product::with('sizes')
             ->latest()
             ->paginate($request->integer('per_page', 20));
 
-        return ProductResource::collection($products);
+        return RestAPI::setPagination($products)
+            ->response(ProductResource::collection($products)->resolve());
     }
 
     /**
      * Store a newly created product (Admin API).
      */
-    public function store(StoreProductRequest $request): ProductResource
+    public function store(StoreProductRequest $request): JsonResponse
     {
-        $product = $this->productService->createProduct($request->validated());
+        $product = ProductService::init($request->validated())
+            ->validation()
+            ->createProduct()
+            ->build();
 
-        return new ProductResource($product);
+        return RestAPI::response(new ProductResource($product), true, 'Product created successfully');
     }
 
     /**
      * Update the specified product (Admin API).
      */
-    public function update(UpdateProductRequest $request, Product $product): ProductResource
+    public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
-        $updatedProduct = $this->productService->updateProduct($product, $request->validated());
+        $updatedProduct = ProductService::init($request->validated())
+            ->setProduct($product)
+            ->validation()
+            ->updateProduct()
+            ->build();
 
-        return new ProductResource($updatedProduct);
+        return RestAPI::response(new ProductResource($updatedProduct), true, 'Product updated successfully');
     }
 
     /**
      * Soft delete the specified product (Admin API).
      */
-    public function destroy(Product $product)
+    public function destroy(Product $product): JsonResponse
     {
-        $this->productService->deleteProduct($product);
+        ProductService::deleteProduct($product);
 
-        return response()->noContent();
+        return RestAPI::messageResponse('Product deleted successfully');
     }
 }

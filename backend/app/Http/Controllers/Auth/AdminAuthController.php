@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Classes\RestAPI;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
@@ -14,7 +15,7 @@ class AdminAuthController extends Controller
     /**
      * Handle an incoming admin authentication request.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $request->validate([
             'email' => ['required', 'string', 'email'],
@@ -30,9 +31,7 @@ class AdminAuthController extends Controller
         }
 
         if (!$user->isAdmin()) {
-            return response()->json([
-                'message' => 'Access denied. Admin privileges required.'
-            ], 403);
+            return RestAPI::response('Access denied. Admin privileges required.', false, 'ADMIN_ACCESS_DENIED');
         }
 
         // Revoke older admin tokens if desired (optional, but good for security)
@@ -40,7 +39,7 @@ class AdminAuthController extends Controller
 
         $token = $user->createToken('admin-token')->plainTextToken;
 
-        return response()->json([
+        return RestAPI::response([
             'token' => $token,
             'user' => [
                 'id' => $user->id,
@@ -49,17 +48,16 @@ class AdminAuthController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
             ],
-            'message' => 'Admin successfully logged in'
-        ]);
+        ], true, 'Admin successfully logged in');
     }
 
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request)
+    public function destroy(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Admin successfully logged out']);
+        return RestAPI::messageResponse('Admin successfully logged out');
     }
 }

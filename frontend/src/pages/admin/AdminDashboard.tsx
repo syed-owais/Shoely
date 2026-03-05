@@ -6,28 +6,49 @@ import {
   TrendingUp,
   AlertTriangle,
   ArrowUpRight,
-  DollarSign
+  DollarSign,
+  Download
 } from 'lucide-react';
 import { adminDashboardApi } from '@/api/admin/dashboardApi';
 import { adminOrderApi } from '@/api/admin/orderApi';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import gsap from 'gsap';
 
 export default function AdminDashboard() {
   const cardsRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleExport = async (type: 'orders' | 'customers') => {
+    try {
+      const res = type === 'orders'
+        ? await adminDashboardApi.exportOrders()
+        : await adminDashboardApi.exportCustomers();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${type}_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, ordersRes] = await Promise.all([
+        const [statsRes, ordersRes, chartRes] = await Promise.all([
           adminDashboardApi.getStats(),
           adminOrderApi.getAll({ per_page: 5 }),
+          adminDashboardApi.getChartData(),
         ]);
         setStats(statsRes.data.data || statsRes.data);
         const ordersData = ordersRes.data.data || [];
         setRecentOrders(ordersData.slice(0, 5));
+        setChartData(chartRes.data.data || []);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -118,7 +139,56 @@ export default function AdminDashboard() {
         >
           + Add Product
         </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleExport('orders')}
+            className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 text-white/70 rounded-lg text-sm hover:bg-white/10 transition-colors"
+          >
+            <Download className="w-4 h-4" /> Export Orders
+          </button>
+          <button
+            onClick={() => handleExport('customers')}
+            className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 text-white/70 rounded-lg text-sm hover:bg-white/10 transition-colors"
+          >
+            <Download className="w-4 h-4" /> Export Customers
+          </button>
+        </div>
       </div>
+
+      {/* Revenue Chart */}
+      {chartData.length > 0 && (
+        <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+          <h2 className="font-semibold text-white mb-4">Revenue (Last 30 Days)</h2>
+          <ResponsiveContainer width="100%" height={250}>
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#FF4D6D" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#FF4D6D" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis
+                dataKey="label"
+                stroke="rgba(255,255,255,0.3)"
+                tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }}
+                interval={4}
+              />
+              <YAxis
+                stroke="rgba(255,255,255,0.3)"
+                tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }}
+                tickFormatter={(v) => `PKR ${v.toLocaleString()}`}
+              />
+              <Tooltip
+                contentStyle={{ background: '#1a1a1d', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+                formatter={(value: number) => [`PKR ${value.toLocaleString()}`, 'Revenue']}
+              />
+              <Area type="monotone" dataKey="revenue" stroke="#FF4D6D" fill="url(#colorRevenue)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div ref={cardsRef} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">

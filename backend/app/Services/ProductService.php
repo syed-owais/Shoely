@@ -8,10 +8,108 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProductService
 {
+    // ── Internal state ─────────────────────────────────────────
+    private array $data = [];
+    private array $sizes = [];
+    private ?Product $product = null;
+
+    // ── Static initializer ─────────────────────────────────────
+
+    /**
+     * Bootstrap the service with product data.
+     */
+    public static function init(array $data): static
+    {
+        $service = new static();
+        $service->sizes = $data['sizes'] ?? [];
+        unset($data['sizes']);
+        $service->data = $data;
+
+        return $service;
+    }
+
+    // ── Set methods ────────────────────────────────────────────
+
+    /**
+     * Set an existing product for update operations.
+     */
+    public function setProduct(Product $product): static
+    {
+        $this->product = $product;
+
+        return $this;
+    }
+
+    // ── Validation ─────────────────────────────────────────────
+
+    /**
+     * Validate product data before persistence.
+     */
+    public function validation(): static
+    {
+        // Extend with business rules as needed (e.g. price > 0, images required)
+        return $this;
+    }
+
+    // ── Create / Update ────────────────────────────────────────
+
+    /**
+     * Persist a new product with its size variants.
+     */
+    public function createProduct(): static
+    {
+        $this->product = Product::create($this->data);
+
+        foreach ($this->sizes as $size) {
+            $this->product->sizes()->create($size);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Update an existing product and sync its size variants.
+     */
+    public function updateProduct(): static
+    {
+        $this->product->update($this->data);
+
+        if (!empty($this->sizes)) {
+            $sizeList = collect($this->sizes)->pluck('size')->toArray();
+            $this->product->sizes()->whereNotIn('size', $sizeList)->delete();
+
+            foreach ($this->sizes as $sizeData) {
+                $this->product->sizes()->updateOrCreate(
+                    ['size' => $sizeData['size']],
+                    [
+                        'available' => $sizeData['available'],
+                        'quantity' => $sizeData['quantity'],
+                    ]
+                );
+            }
+        }
+
+        return $this;
+    }
+
+    // ── Build ──────────────────────────────────────────────────
+
+    /**
+     * Finalize and return the product with sizes loaded.
+     */
+    public function build(): Product
+    {
+        return $this->product->load('sizes');
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  Query methods (no builder needed)
+    // ══════════════════════════════════════════════════════════════
+
     /**
      * Get paginated products with optional filters.
      */
-    public function getProducts(array $filters = [], int $perPage = 12): LengthAwarePaginator
+    public static function getProducts(array $filters = [], int $perPage = 12): LengthAwarePaginator
     {
         $query = Product::active()->with('sizes');
 
@@ -46,23 +144,12 @@ class ProductService
         }
 
         $sort = $filters['sort_by'] ?? $filters['sort'] ?? 'newest';
-        switch ($sort) {
-            case 'price-asc':
-            case 'price_asc':
-                $query->orderBy('price', 'asc');
-                break;
-            case 'price-desc':
-            case 'price_desc':
-                $query->orderBy('price', 'desc');
-                break;
-            case 'rating': // Fallback to rating logic when implemented, for now use ID
-                $query->orderBy('id', 'desc');
-                break;
-            case 'newest':
-            default:
-                $query->latest();
-                break;
-        }
+        match ($sort) {
+            'price-asc', 'price_asc' => $query->orderBy('price', 'asc'),
+            'price-desc', 'price_desc' => $query->orderBy('price', 'desc'),
+            'rating' => $query->orderBy('id', 'desc'),
+            default => $query->latest(),
+        };
 
         return $query->paginate($perPage);
     }
@@ -70,7 +157,7 @@ class ProductService
     /**
      * Get featured products for homepage.
      */
-    public function getFeaturedProducts(int $limit = 4): Collection
+    public static function getFeaturedProducts(int $limit = 4): Collection
     {
         return Product::active()
             ->with('sizes')
@@ -80,56 +167,9 @@ class ProductService
     }
 
     /**
-     * Create a new product.
-     */
-    public function createProduct(array $data): Product
-    {
-        $sizes = $data['sizes'] ?? [];
-        unset($data['sizes']);
-
-        $product = Product::create($data);
-
-        foreach ($sizes as $size) {
-            $product->sizes()->create($size);
-        }
-
-        return $product->load('sizes');
-    }
-
-    /**
-     * Update an existing product.
-     */
-    public function updateProduct(Product $product, array $data): Product
-    {
-        $sizes = $data['sizes'] ?? null;
-        unset($data['sizes']);
-
-        $product->update($data);
-
-        if (is_array($sizes)) {
-            // Delete existing that are not in the new list
-            $sizeList = collect($sizes)->pluck('size')->toArray();
-            $product->sizes()->whereNotIn('size', $sizeList)->delete();
-
-            // Create or update
-            foreach ($sizes as $sizeData) {
-                $product->sizes()->updateOrCreate(
-                    ['size' => $sizeData['size']],
-                    [
-                        'available' => $sizeData['available'],
-                        'quantity' => $sizeData['quantity']
-                    ]
-                );
-            }
-        }
-
-        return $product->load('sizes');
-    }
-
-    /**
      * Soft delete a product (set is_active to false).
      */
-    public function deleteProduct(Product $product): void
+    public static function deleteProduct(Product $product): void
     {
         $product->update(['is_active' => false]);
     }

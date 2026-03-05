@@ -25,11 +25,12 @@ This skill provides comprehensive Laravel best practices for building scalable, 
 
 ## Core Principles
 
-1. **Layered Architecture** - Presentation → Application → Domain → Infrastructure
-2. **SOLID Principles** - Single responsibility, Open/closed, Liskov substitution, Interface segregation, Dependency inversion
-3. **Repository Pattern** - Abstract database operations
-4. **Service Layer** - Business logic lives in services, NOT controllers
-5. **Event-Driven** - Decouple workflows with events
+1. **Builder/Chaining Services** - All services use `init() → fetch*() → set*() → validation() → calculate*() → beginTransaction() → create*()/update*() → commitTransaction() → dispatchEvents() → build()` pattern
+2. **Naming Conventions** - Classes must have type suffixes: `*Event`, `*Listener`, `*Service`, `*Controller`, `*Request`, `*Resource`
+3. **Thin Controllers** - Controllers delegate ALL business logic to services (3–5 lines per method)
+4. **Event-Driven Architecture** - Never send mail directly; dispatch events, listeners handle via queues
+5. **SOLID Principles** - Single responsibility, Open/closed, Liskov substitution, Interface segregation, Dependency inversion
+6. **Domain-Specific Services** - Split services by responsibility (e.g., `OrderCheckoutService`, `OrderStatusService`, `OrderQueryService`)
 
 ## Supporting Documentation
 
@@ -54,11 +55,11 @@ For detailed implementation guidance, refer to these supporting files:
 
 ## Quick Reference
 
-**Repository**: `interface ProductRepositoryInterface { public function all(): Collection; }`  
-**Service**: Business logic orchestration  
-**Action**: Single-purpose task execution  
+**Service**: `OrderCheckoutService::init($request, $user)->fetchCart()->...->build()`  
+**Event**: `event(new OrderPlacedEvent($order))` — never direct `Mail::to()`  
+**Controller**: Thin — one chain call + return `RestAPI::response()`  
 
-See `design-patterns.md` for complete implementation examples.
+See `code-quality.md` for detailed service builder pattern and naming conventions.
 
 ### Critical Security Checklist
 
@@ -81,8 +82,10 @@ See `design-patterns.md` for complete implementation examples.
 
 ## Common Mistakes to Avoid
 
-❌ Business logic in controllers ✅ Use services/actions  
-❌ No repositories ✅ Abstract database access  
+❌ Business logic in controllers ✅ Use builder-pattern services  
+❌ Monolithic service methods ✅ Break into chained single-responsibility steps  
+❌ Direct `Mail::to()->send()` ✅ Dispatch events with queueable listeners  
+❌ Classes without type suffixes ✅ Always use `*Event`, `*Listener`, `*Service` suffixes  
 ❌ N+1 queries ✅ Eager load relationships  
 ❌ Raw SQL ✅ Use query builder with parameter binding  
 ❌ No tests ✅ Write feature & unit tests  

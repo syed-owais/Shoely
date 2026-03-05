@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   Tag,
   Megaphone,
+  Settings,
   LogOut,
   Menu,
   ChevronRight
@@ -19,6 +20,7 @@ const sidebarLinks = [
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { label: 'Promo Codes', href: '/admin/promo-codes', icon: Tag },
   { label: 'Campaigns', href: '/admin/campaigns', icon: Megaphone },
+  { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
 export default function AdminLayout() {

@@ -43,7 +43,7 @@ export default function RegisterPage() {
 
         try {
             const response = await api.post('/api/register', formData);
-            const { user, token } = response.data;
+            const { user, token } = response.data.data;
 
             // Store the token
             localStorage.setItem('auth_token', token);

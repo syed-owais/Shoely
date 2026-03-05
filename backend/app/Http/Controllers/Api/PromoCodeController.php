@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Classes\RestAPI;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePromoCodeRequest;
 use App\Http\Resources\PromoCodeResource;
 use App\Models\PromoCode;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PromoCodeController extends Controller
 {
     /**
      * Public/Consumer: Validate promo code and get calculated discount.
      */
-    public function validateCode(Request $request)
+    public function validateCode(Request $request): JsonResponse
     {
         $request->validate([
             'code' => ['required', 'string', 'exists:promo_codes,code'],
@@ -26,23 +27,20 @@ class PromoCodeController extends Controller
         $validationResult = $promoCode->calculateDiscount((float) $request->input('subtotal'));
 
         if (!$validationResult['valid']) {
-            return response()->json([
-                'valid' => false,
-                'message' => $validationResult['message'],
-            ], 422);
+            return RestAPI::response($validationResult['message'], false, 'PROMO_CODE_INVALID');
         }
 
-        return response()->json([
+        return RestAPI::response([
             'valid' => true,
             'discount' => $validationResult['discount'],
-            'promo_code' => new PromoCodeResource($promoCode)
-        ]);
+            'promo_code' => new PromoCodeResource($promoCode),
+        ], true, 'Promo code applied successfully');
     }
 
     /**
      * Admin: List all promo codes.
      */
-    public function adminIndex(Request $request): AnonymousResourceCollection
+    public function adminIndex(Request $request): JsonResponse
     {
         $query = PromoCode::latest();
 
@@ -50,31 +48,34 @@ class PromoCodeController extends Controller
             $query->where('is_active', $request->boolean('active'));
         }
 
-        return PromoCodeResource::collection($query->paginate($request->integer('per_page', 20)));
+        $promoCodes = $query->paginate($request->integer('per_page', 20));
+
+        return RestAPI::setPagination($promoCodes)
+            ->response(PromoCodeResource::collection($promoCodes)->resolve());
     }
 
     /**
      * Admin: Store a new promo code.
      */
-    public function store(StorePromoCodeRequest $request): PromoCodeResource
+    public function store(StorePromoCodeRequest $request): JsonResponse
     {
         $promoCode = PromoCode::create($request->validated());
 
-        return new PromoCodeResource($promoCode);
+        return RestAPI::response(new PromoCodeResource($promoCode), true, 'Promo code created successfully');
     }
 
     /**
      * Admin: Show promo code details.
      */
-    public function show(PromoCode $promoCode): PromoCodeResource
+    public function show(PromoCode $promoCode): JsonResponse
     {
-        return new PromoCodeResource($promoCode);
+        return RestAPI::response(new PromoCodeResource($promoCode));
     }
 
     /**
      * Admin: Update promo code.
      */
-    public function update(Request $request, PromoCode $promoCode): PromoCodeResource
+    public function update(Request $request, PromoCode $promoCode): JsonResponse
     {
         $validated = $request->validate([
             'code' => ['sometimes', 'string', 'max:50', 'unique:promo_codes,code,' . $promoCode->id],
@@ -91,16 +92,16 @@ class PromoCodeController extends Controller
 
         $promoCode->update($validated);
 
-        return new PromoCodeResource($promoCode);
+        return RestAPI::response(new PromoCodeResource($promoCode), true, 'Promo code updated successfully');
     }
 
     /**
      * Admin: Delete promo code.
      */
-    public function destroy(PromoCode $promoCode)
+    public function destroy(PromoCode $promoCode): JsonResponse
     {
         $promoCode->delete();
 
-        return response()->noContent();
+        return RestAPI::messageResponse('Promo code deleted successfully');
     }
 }

@@ -2,12 +2,15 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PromoCodeController;
 use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\AdminDashboardController;
+use App\Http\Controllers\Api\ExportController;
+use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Auth\AdminAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +26,8 @@ Route::get('/ping', function () {
 // Auth Endpoints
 Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 
 // Product Endpoints
 Route::get('/products', [ProductController::class, 'index']);
@@ -81,6 +86,7 @@ Route::post('/promo-codes/validate', [PromoCodeController::class, 'validateCode'
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     // Admin Dashboard
     Route::get('/dashboard/stats', [AdminDashboardController::class, 'stats']);
+    Route::get('/dashboard/chart', [AdminDashboardController::class, 'chartData']);
 
     // Admin Auth
     Route::get('/user', function (Request $request) {
@@ -123,6 +129,15 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/campaigns/{campaign}', [CampaignController::class, 'show']);
     Route::put('/campaigns/{campaign}', [CampaignController::class, 'update']);
     Route::delete('/campaigns/{campaign}', [CampaignController::class, 'destroy']);
+
+    // Admin Settings
+    Route::get('/settings', [SettingController::class, 'index']);
+    Route::get('/settings/{group}', [SettingController::class, 'group']);
+    Route::put('/settings', [SettingController::class, 'update']);
+
+    // Admin Exports
+    Route::get('/exports/orders', [ExportController::class, 'orders']);
+    Route::get('/exports/customers', [ExportController::class, 'customers']);
 });
 
 // Admin Auth

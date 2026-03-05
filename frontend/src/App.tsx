@@ -15,6 +15,8 @@ import OrderDetailPage from '@/pages/customer/OrderDetailPage';
 import OrdersPage from '@/pages/customer/OrdersPage';
 import LoginPage from '@/pages/customer/LoginPage';
 import RegisterPage from '@/pages/customer/RegisterPage';
+import ForgotPasswordPage from '@/pages/customer/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/customer/ResetPasswordPage';
 
 // Admin Layout & Pages
 import AdminLayout from '@/layouts/AdminLayout';
@@ -26,6 +28,7 @@ import AdminOrders from '@/pages/admin/AdminOrders';
 import AdminOrderDetail from '@/pages/admin/AdminOrderDetail';
 import AdminPromoCodes from '@/pages/admin/AdminPromoCodes';
 import AdminCampaigns from '@/pages/admin/AdminCampaigns';
+import AdminSettings from '@/pages/admin/AdminSettings';
 
 // Customer Protected Route - requires user to be logged in
 function CustomerProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -80,6 +83,8 @@ function App() {
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -100,6 +105,7 @@ function App() {
           <Route path="orders/:id" element={<AdminOrderDetail />} />
           <Route path="promo-codes" element={<AdminPromoCodes />} />
           <Route path="campaigns" element={<AdminCampaigns />} />
+          <Route path="settings" element={<AdminSettings />} />
         </Route>
 
         {/* Fallback */}

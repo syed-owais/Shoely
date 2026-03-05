@@ -23,9 +23,21 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Handle 401 responses globally (token expired/invalid)
+// Normalize RestAPI responses and handle 401s globally
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // If the response matches the RestAPI shape, normalize it
+        // so the frontend can keep reading `res.data.data` as before.
+        const d = response.data;
+        if (d && typeof d === 'object' && 'status' in d && 'body' in d) {
+            // Map RestAPI { status, body, paging, message } → { data: body, paging, ... }
+            response.data = {
+                ...d,
+                data: d.body,
+            };
+        }
+        return response;
+    },
     (error) => {
         if (error.response?.status === 401) {
             const isAdminRoute = window.location.pathname.startsWith('/admin');

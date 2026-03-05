@@ -7,13 +7,155 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductSize;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 class CartService
 {
+    // ── Internal state ─────────────────────────────────────────
+    private User $user;
+    private Cart $cart;
+    private ?Product $product = null;
+    private ?ProductSize $productSize = null;
+    private ?CartItem $cartItem = null;
+
+    private int $productId = 0;
+    private float $size = 0;
+    private int $quantity = 1;
+
+    // ── Static initializer ─────────────────────────────────────
+
     /**
-     * Get the cart for the given user, creating one if it doesn't exist.
+     * Bootstrap the service with a user context.
      */
-    public function getCartForUser(User $user): Cart
+    public static function init(User $user): static
+    {
+        $service = new static();
+        $service->user = $user;
+
+        return $service;
+    }
+
+    // ── Fetch methods ──────────────────────────────────────────
+
+    /**
+     * Load or create the user's cart.
+     */
+    public function fetchCart(): static
+    {
+        $this->cart = Cart::firstOrCreate(
+            ['user_id' => $this->user->id]
+        );
+
+        return $this;
+    }
+
+    /**
+     * Fetch the product and its size variant.
+     */
+    public function fetchProduct(int $productId, float $size): static
+    {
+        $this->productId = $productId;
+        $this->size = $size;
+
+        $this->product = Product::findOrFail($productId);
+        $this->productSize = ProductSize::where('product_id', $productId)
+            ->where('size', $size)
+            ->firstOrFail();
+
+        return $this;
+    }
+
+    /**
+     * Fetch an existing cart item for the product+size combo.
+     */
+    public function fetchCartItem(): static
+    {
+        $this->cartItem = $this->cart->items()
+            ->where('product_id', $this->productId)
+            ->where('size', $this->size)
+            ->first();
+
+        return $this;
+    }
+
+    // ── Set methods ────────────────────────────────────────────
+
+    /**
+     * Set the desired quantity to add.
+     */
+    public function setQuantity(int $quantity): static
+    {
+        $this->quantity = $quantity;
+
+        return $this;
+    }
+
+    // ── Validation ─────────────────────────────────────────────
+
+    /**
+     * Validate stock availability for the requested quantity.
+     */
+    public function validation(): static
+    {
+        $totalQuantity = $this->quantity;
+
+        if ($this->cartItem) {
+            $totalQuantity += $this->cartItem->quantity;
+        }
+
+        if ($this->productSize->quantity < $totalQuantity) {
+            abort(422, 'Not enough stock available for this size.');
+        }
+
+        return $this;
+    }
+
+    // ── Create / Update ────────────────────────────────────────
+
+    /**
+     * Add item to cart or increment quantity if it already exists.
+     */
+    public function addOrUpdateItem(): static
+    {
+        if ($this->cartItem) {
+            $this->cartItem->increment('quantity', $this->quantity);
+        } else {
+            $this->cartItem = $this->cart->items()->create([
+                'product_id' => $this->productId,
+                'size' => $this->size,
+                'quantity' => $this->quantity,
+            ]);
+        }
+
+        return $this;
+    }
+
+    // ── Build ──────────────────────────────────────────────────
+
+    /**
+     * Return the cart item with its product loaded.
+     */
+    public function build(): CartItem
+    {
+        return $this->cartItem->load('product');
+    }
+
+    /**
+     * Return the full cart with items loaded.
+     */
+    public function buildCart(): Cart
+    {
+        return $this->cart->load('items.product');
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  Simple operations (no builder needed)
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Get the cart for the given user (read-only).
+     */
+    public static function getCartForUser(User $user): Cart
     {
         return Cart::firstOrCreate(
             ['user_id' => $user->id]
@@ -21,55 +163,15 @@ class CartService
     }
 
     /**
-     * Add an item to the user's cart.
+     * Update a cart item's quantity.
      */
-    public function addItem(User $user, int $productId, float $size, int $quantity = 1): CartItem
-    {
-        $cart = $this->getCartForUser($user);
-
-        // Verify product and size exist
-        $product = Product::findOrFail($productId);
-        $productSize = ProductSize::where('product_id', $productId)
-            ->where('size', $size)
-            ->firstOrFail();
-
-        // Check stock
-        if ($productSize->quantity < $quantity) {
-            abort(422, 'Not enough stock available for this size.');
-        }
-
-        $cartItem = $cart->items()->where('product_id', $productId)
-            ->where('size', $size)
-            ->first();
-
-        if ($cartItem) {
-            // Check if updated quantity exceeds stock
-            if ($productSize->quantity < ($cartItem->quantity + $quantity)) {
-                abort(422, 'Not enough stock available for this size.');
-            }
-            $cartItem->increment('quantity', $quantity);
-        } else {
-            $cartItem = $cart->items()->create([
-                'product_id' => $productId,
-                'size' => $size,
-                'quantity' => $quantity,
-            ]);
-        }
-
-        return $cartItem->load('product');
-    }
-
-    /**
-     * Update the quantity of a specific cart item.
-     */
-    public function updateItemQuantity(CartItem $cartItem, int $quantity): CartItem
+    public static function updateItemQuantity(CartItem $cartItem, int $quantity): CartItem
     {
         if ($quantity <= 0) {
             $cartItem->delete();
             return $cartItem;
         }
 
-        // Verify stock
         $productSize = ProductSize::where('product_id', $cartItem->product_id)
             ->where('size', $cartItem->size)
             ->firstOrFail();
@@ -86,26 +188,30 @@ class CartService
     /**
      * Remove an item from the cart.
      */
-    public function removeItem(CartItem $cartItem): void
+    public static function removeItem(CartItem $cartItem): void
     {
         $cartItem->delete();
     }
 
     /**
      * Sync local cart items to the database cart upon login.
-     * Takes an array of associative arrays: ['product_id' => x, 'size' => y, 'quantity' => z]
      */
-    public function syncLocalCart(User $user, array $localItems): Cart
+    public static function syncLocalCart(User $user, array $localItems): Cart
     {
         foreach ($localItems as $item) {
             try {
-                $this->addItem($user, $item['product_id'], (float) $item['size'], (int) $item['quantity']);
+                static::init($user)
+                    ->fetchCart()
+                    ->fetchProduct($item['product_id'], (float) $item['size'])
+                    ->fetchCartItem()
+                    ->setQuantity((int) $item['quantity'])
+                    ->validation()
+                    ->addOrUpdateItem();
             } catch (\Exception $e) {
-                // If an item fails to add (e.g. out of stock), just skip it during sync instead of throwing
-                \Illuminate\Support\Facades\Log::warning('Cart sync skip: ' . $e->getMessage());
+                Log::warning('Cart sync skip: ' . $e->getMessage());
             }
         }
 
-        return $this->getCartForUser($user);
+        return static::getCartForUser($user);
     }
 }

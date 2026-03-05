@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Classes\RestAPI;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
@@ -48,18 +49,51 @@ class AdminDashboardController extends Controller
             ->take(5)
             ->get();
 
-        return response()->json([
-            'data' => [
-                'summary' => [
-                    'totalSales' => (float) $totalSales,
-                    'totalOrders' => $totalOrders,
-                    'totalCustomers' => $totalCustomers,
-                    'totalProducts' => $totalProducts,
-                    'totalPendingOrders' => $totalPendingOrders,
-                ],
-                'recentOrders' => $recentOrders,
-                'topProducts' => $topProducts,
-            ]
+        return RestAPI::response([
+            'summary' => [
+                'totalSales' => (float) $totalSales,
+                'totalOrders' => $totalOrders,
+                'totalCustomers' => $totalCustomers,
+                'totalProducts' => $totalProducts,
+                'totalPendingOrders' => $totalPendingOrders,
+            ],
+            'recentOrders' => $recentOrders,
+            'topProducts' => $topProducts,
         ]);
+    }
+
+    /**
+     * Get revenue chart data (last 30 days).
+     */
+    public function chartData(): JsonResponse
+    {
+        $days = 30;
+        $startDate = now()->subDays($days);
+
+        $dailyRevenue = Order::where('status', '!=', 'cancelled')
+            ->where('created_at', '>=', $startDate)
+            ->select(
+                DB::raw('DATE(created_at) as date'),
+                DB::raw('SUM(total) as revenue'),
+                DB::raw('COUNT(*) as orders')
+            )
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // Fill in missing dates with zero values
+        $chartData = [];
+        for ($i = $days; $i >= 0; $i--) {
+            $date = now()->subDays($i)->format('Y-m-d');
+            $dayData = $dailyRevenue->firstWhere('date', $date);
+            $chartData[] = [
+                'date' => $date,
+                'label' => now()->subDays($i)->format('M d'),
+                'revenue' => $dayData ? (float) $dayData->revenue : 0,
+                'orders' => $dayData ? (int) $dayData->orders : 0,
+            ];
+        }
+
+        return RestAPI::response($chartData);
     }
 }

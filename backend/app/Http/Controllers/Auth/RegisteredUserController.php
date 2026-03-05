@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Classes\RestAPI;
 use App\Http\Controllers\Controller;
+use App\Events\UserRegisteredEvent;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
@@ -40,9 +42,12 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
+        // Dispatch user registered event (listener sends email via queue)
+        event(new UserRegisteredEvent($user));
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
-        return response()->json([
+        return RestAPI::response([
             'user' => [
                 'id' => $user->id,
                 'first_name' => $user->first_name,
@@ -52,6 +57,6 @@ class RegisteredUserController extends Controller
                 'role' => $user->role,
             ],
             'token' => $token,
-        ], 201);
+        ], true, 'Registration successful');
     }
 }

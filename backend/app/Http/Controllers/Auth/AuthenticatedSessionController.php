@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Classes\RestAPI;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,7 @@ class AuthenticatedSessionController extends Controller
         $user->tokens()->delete();
         $token = $user->createToken('auth-token')->plainTextToken;
 
-        return response()->json([
+        return RestAPI::response([
             'user' => [
                 'id' => $user->id,
                 'first_name' => $user->first_name,
@@ -33,7 +34,7 @@ class AuthenticatedSessionController extends Controller
                 'role' => $user->role,
             ],
             'token' => $token,
-        ]);
+        ], true, 'Login successful');
     }
 
     /**
@@ -44,6 +45,6 @@ class AuthenticatedSessionController extends Controller
         // Revoke the current token
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Logged out successfully']);
+        return RestAPI::messageResponse('Logged out successfully');
     }
 }
