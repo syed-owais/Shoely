@@ -12,6 +12,8 @@ export const orderApi = {
         zip_code: string;
         country?: string;
         promo_code?: string;
+        payment_method: string;
+        items?: { product_id: string; size: number; quantity: number }[];
     }) =>
         api.post('/api/orders/checkout', data),
 

@@ -127,12 +127,7 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <p className="text-white/40 text-sm text-center">
-              Admin credentials:<br />
-              <span className="text-white/60">admin@shoely.com / admin123</span>
-            </p>
-          </div>
+
         </div>
 
         {/* Back to store */}

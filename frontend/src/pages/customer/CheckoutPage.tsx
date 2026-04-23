@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Check, CreditCard, Truck, ShieldCheck, Lock, Banknote } from 'lucide-react';
 import { useStore } from '@/store/useStore';

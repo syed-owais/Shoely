@@ -29,6 +29,7 @@ import AdminOrderDetail from '@/pages/admin/AdminOrderDetail';
 import AdminPromoCodes from '@/pages/admin/AdminPromoCodes';
 import AdminCampaigns from '@/pages/admin/AdminCampaigns';
 import AdminSettings from '@/pages/admin/AdminSettings';
+import AdminProfile from '@/pages/admin/AdminProfile';
 
 // Customer Protected Route - requires user to be logged in
 function CustomerProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -105,6 +106,7 @@ function App() {
           <Route path="orders/:id" element={<AdminOrderDetail />} />
           <Route path="promo-codes" element={<AdminPromoCodes />} />
           <Route path="campaigns" element={<AdminCampaigns />} />
+          <Route path="profile" element={<AdminProfile />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
 

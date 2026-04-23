@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   Tag,
   Megaphone,
+  UserCog,
   Settings,
   LogOut,
   Menu,
@@ -20,6 +21,7 @@ const sidebarLinks = [
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { label: 'Promo Codes', href: '/admin/promo-codes', icon: Tag },
   { label: 'Campaigns', href: '/admin/campaigns', icon: Megaphone },
+  { label: 'Profile', href: '/admin/profile', icon: UserCog },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
