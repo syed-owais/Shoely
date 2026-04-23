@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Auth\AdminAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/ping', function () {
     return response()->json(['message' => 'pong']);
+});
+
+Route::prefix('debug')->group(function () {
+    require __DIR__ . '/debug.php';
 });
 
 // Auth Endpoints
@@ -138,6 +143,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Admin Exports
     Route::get('/exports/orders', [ExportController::class, 'orders']);
     Route::get('/exports/customers', [ExportController::class, 'customers']);
+
+    // Admin Profile
+    Route::get('/profile', [AdminProfileController::class, 'show']);
+    Route::put('/profile', [AdminProfileController::class, 'updateProfile']);
+    Route::put('/profile/password', [AdminProfileController::class, 'updatePassword']);
 });
 
 // Admin Auth

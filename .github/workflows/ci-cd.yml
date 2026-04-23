@@ -1,0 +1,262 @@
+# ─────────────────────────────────────────────────────────────────
+#  Shoely CI/CD Pipeline
+#
+#  WHAT:  Tests backend + frontend, then deploys to production
+#  WHEN:  Every push to `main` (or manual trigger)
+#  HOW:   3 stages → lint → test → deploy (only if tests pass)
+# ─────────────────────────────────────────────────────────────────
+
+name: CI/CD Pipeline
+
+# ── TRIGGER ─────────────────────────────────────────────────────
+# Runs on every push to main, or manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:          # manual "Run workflow" button in GitHub UI
+
+# ── ENVIRONMENT VARIABLES (shared across all jobs) ──────────────
+env:
+  PHP_VERSION: '8.3'
+  NODE_VERSION: '20'
+
+# ── JOBS ────────────────────────────────────────────────────────
+jobs:
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #  STAGE 1A: Backend Lint & Static Analysis
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  backend-lint:
+    name: 🔍 Backend Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, json, curl, pdo_mysql
+          coverage: none
+
+      # Cache composer dependencies so repeat runs are faster
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      # Laravel Pint (already in your devDependencies) = PHP code style
+      - name: Run Laravel Pint (code style)
+        working-directory: backend
+        run: vendor/bin/pint --test
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #  STAGE 1B: Backend Tests (PHPUnit)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  backend-test:
+    name: 🧪 Backend Tests
+    runs-on: ubuntu-latest
+
+    # Spin up a real MySQL container for your tests
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: shoely_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, json, curl, pdo_mysql
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      # Create .env for the test environment
+      - name: Prepare environment
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: shoely_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: Run migrations
+        working-directory: backend
+        run: php artisan migrate --force
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: shoely_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: Run PHPUnit tests
+        working-directory: backend
+        run: php artisan test --parallel
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: shoely_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #  STAGE 1C: Frontend Lint & Build Check
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  frontend-build:
+    name: 🏗️ Frontend Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      # If the build fails, TypeScript or import errors exist
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #  STAGE 2: Deploy to Production
+  #  Only runs when ALL 3 CI jobs pass AND we're on the main branch
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  deploy:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [backend-lint, backend-test, frontend-build]
+
+    # Only deploy on push to main (not on PRs)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    # Production environment — enables approval gates in GitHub
+    environment:
+      name: production
+      url: https://shoely.com
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script_stop: true          # stop on first error
+          script: |
+            set -e
+
+            REPO="git@github.com:syed-owais/Shoely.git"
+            BASE_DIR="/var/www/shoely"
+            SHARED_DIR="$BASE_DIR/shared"
+            RELEASE_DIR="$BASE_DIR/releases/$(date +%Y%m%d_%H%M%S)"
+
+            echo "▶ Creating release: $RELEASE_DIR"
+            mkdir -p "$RELEASE_DIR"
+
+            # ── 1. Clone latest code ──────────────────────────
+            git clone --depth=1 --branch=main "$REPO" "$RELEASE_DIR"
+
+            # ── 2. Symlink shared files ───────────────────────
+            ln -sfn "$SHARED_DIR/backend/.env" "$RELEASE_DIR/backend/.env"
+            rm -rf "$RELEASE_DIR/backend/storage"
+            ln -sfn "$SHARED_DIR/backend/storage" "$RELEASE_DIR/backend/storage"
+            rm -rf "$RELEASE_DIR/backend/bootstrap/cache"
+            ln -sfn "$SHARED_DIR/backend/bootstrap/cache" "$RELEASE_DIR/backend/bootstrap/cache"
+
+            # ── 3. Backend: install & optimise ────────────────
+            cd "$RELEASE_DIR/backend"
+            composer install --no-dev --optimize-autoloader --no-interaction
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+            php artisan migrate --force
+
+            # ── 4. Frontend: build ────────────────────────────
+            cd "$RELEASE_DIR/frontend"
+            npm ci --production=false
+            npm run build
+
+            # ── 5. Atomic symlink swap (zero downtime) ────────
+            ln -sfn "$RELEASE_DIR" "$BASE_DIR/current"
+            echo "▶ Symlink updated → $RELEASE_DIR"
+
+            # ── 6. Restart queue workers ──────────────────────
+            cd "$RELEASE_DIR/backend"
+            php artisan queue:restart
+
+            # ── 7. Purge Nginx cache ──────────────────────────
+            sudo rm -rf /tmp/nginx_cache/* 2>/dev/null || true
+            sudo nginx -s reload
+
+            # ── 8. Keep only last 5 releases ──────────────────
+            cd "$BASE_DIR/releases"
+            ls -t | tail -n +6 | xargs -I {} rm -rf {}
+
+            echo "✅ Deployment complete"
+
+      # Post-deploy health check
+      - name: Health check
+        run: |
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.shoely.com/api/products)
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Health check failed (HTTP $STATUS)"
+            exit 1
+          fi
+          echo "✅ Health check passed (HTTP 200)"
