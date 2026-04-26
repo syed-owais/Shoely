@@ -154,10 +154,10 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-6 py-4 text-white/60">{product.sku}</td>
                     <td className="px-6 py-4">
-                      <span className="text-white">${product.price}</span>
+                      <span className="text-white">₨{product.price}</span>
                       {product.originalPrice && (
                         <span className="text-white/40 text-sm line-through ml-2">
-                          ${product.originalPrice}
+                          ₨{product.originalPrice}
                         </span>
                       )}
                     </td>

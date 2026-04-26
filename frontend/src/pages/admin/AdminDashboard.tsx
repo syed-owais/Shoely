@@ -76,7 +76,7 @@ export default function AdminDashboard() {
   const statCards = [
     {
       label: 'Total Revenue',
-      value: `$${totalRevenue.toLocaleString()}`,
+      value: `₨${totalRevenue.toLocaleString()}`,
       icon: DollarSign,
       color: 'bg-green-500/20 text-green-400',
       change: '+12%'
@@ -182,7 +182,7 @@ export default function AdminDashboard() {
               <Tooltip
                 contentStyle={{ background: '#1a1a1d', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
                 labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
-                formatter={(value: number) => [`PKR ${value.toLocaleString()}`, 'Revenue']}
+                formatter={(value: number) => [`₨${value.toLocaleString()}`, 'Revenue']}
               />
               <Area type="monotone" dataKey="revenue" stroke="#FF4D6D" fill="url(#colorRevenue)" strokeWidth={2} />
             </AreaChart>
@@ -247,7 +247,7 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-white font-medium">${order.financials?.totalAmount}</p>
+                    <p className="text-white font-medium">₨{order.financials?.totalAmount}</p>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${getStatusColor(order.status)}`}>
                       {order.status}
                     </span>

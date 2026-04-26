@@ -158,10 +158,10 @@ export default function ProductPage() {
             </div>
 
             <div className="flex items-center gap-3 mt-3">
-              <span className="text-3xl font-bold text-[#FF4D6D]">${product.price}</span>
+              <span className="text-3xl font-bold text-[#FF4D6D]">₨{product.price}</span>
               {product.originalPrice && (
                 <>
-                  <span className="text-xl text-white/40 line-through">${product.originalPrice}</span>
+                  <span className="text-xl text-white/40 line-through">₨{product.originalPrice}</span>
                   <span className="bg-[#FF4D6D]/20 text-[#FF4D6D] text-sm font-semibold px-2 py-1 rounded-full">
                     {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
                   </span>

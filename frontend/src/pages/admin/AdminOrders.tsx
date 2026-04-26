@@ -139,7 +139,7 @@ export default function AdminOrders() {
                     })}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-white font-medium">${order.financials?.totalAmount}</span>
+                    <span className="text-white font-medium">₨{order.financials?.totalAmount}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-block px-2 py-1 rounded-full text-xs ${getStatusColor(order.status)}`}>
@@ -191,7 +191,7 @@ export default function AdminOrders() {
         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
           <p className="text-white/60 text-sm">Total Revenue</p>
           <p className="text-2xl font-bold text-green-400">
-            ${orders.reduce((sum: number, o: any) => sum + (o.financials?.totalAmount || 0), 0).toLocaleString()}
+            ₨{orders.reduce((sum: number, o: any) => sum + (o.financials?.totalAmount || 0), 0).toLocaleString()}
           </p>
         </div>
       </div>

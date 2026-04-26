@@ -45,6 +45,12 @@ Route::get('/campaigns', [CampaignController::class, 'index']);
 // Order Tracking (Public)
 Route::post('/orders/track/{orderNumber}', [OrderController::class, 'track']);
 
+// Product Attributes (Public)
+Route::get('/product-attributes', [\App\Http\Controllers\Api\ProductAttributeController::class, 'index']);
+
+// Public Settings
+Route::get('/settings/public', [SettingController::class, 'publicSettings']);
+
 // ==========================================
 // CONSUMER PROTECTED ROUTES
 // ==========================================
@@ -115,6 +121,13 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/products', [ProductController::class, 'store']);
     Route::put('/products/{product}', [ProductController::class, 'update']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+    
+    // Image Upload
+    Route::post('/upload-image', [\App\Http\Controllers\Api\ImageUploadController::class, 'upload']);
+
+    // Product Attributes CRUD
+    Route::post('/product-attributes', [\App\Http\Controllers\Api\ProductAttributeController::class, 'store']);
+    Route::delete('/product-attributes/{attribute}', [\App\Http\Controllers\Api\ProductAttributeController::class, 'destroy']);
 
     // Admin Orders
     Route::get('/orders', [OrderController::class, 'adminIndex']);

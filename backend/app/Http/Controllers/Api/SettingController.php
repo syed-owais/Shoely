@@ -56,4 +56,19 @@ class SettingController extends Controller
 
         return RestAPI::messageResponse('Settings updated successfully');
     }
+
+    /**
+     * Get public settings (e.g. store currency, store name).
+     */
+    public function publicSettings(): JsonResponse
+    {
+        $keys = ['store_currency', 'store_name', 'shipping_flat_rate', 'free_shipping_threshold'];
+
+        $settings = [];
+        foreach ($keys as $key) {
+            $settings[$key] = Setting::getValue($key);
+        }
+
+        return RestAPI::response($settings);
+    }
 }

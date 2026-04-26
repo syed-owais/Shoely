@@ -24,6 +24,11 @@ interface StoreState {
   setCart: (cart: CartItem[]) => void;
   getCartTotal: () => number;
   getCartCount: () => number;
+
+  // Global Settings
+  currencySymbol: string;
+  currencyCode: string;
+  setCurrency: (symbol: string, code: string) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -111,6 +116,11 @@ export const useStore = create<StoreState>()(
       getCartCount: () => {
         return get().cart.reduce((count, item) => count + item.quantity, 0);
       },
+
+      // Global Settings
+      currencySymbol: '₨',
+      currencyCode: 'PKR',
+      setCurrency: (symbol, code) => set({ currencySymbol: symbol, currencyCode: code }),
     }),
     {
       name: 'shoely-storage',
@@ -120,6 +130,8 @@ export const useStore = create<StoreState>()(
         isAuthenticated: state.isAuthenticated,
         adminUser: state.adminUser,
         isAdminAuthenticated: state.isAdminAuthenticated,
+        currencySymbol: state.currencySymbol,
+        currencyCode: state.currencyCode,
       }),
     }
   )

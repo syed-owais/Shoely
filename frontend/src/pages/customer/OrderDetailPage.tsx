@@ -100,7 +100,7 @@ export default function OrderDetailPage() {
           </div>
           <div className="text-left lg:text-right">
             <p className="text-white/60 text-sm">Total</p>
-            <p className="text-[#FF4D6D] font-bold text-xl">${order.financials?.totalAmount}</p>
+            <p className="text-[#FF4D6D] font-bold text-xl">₨{order.financials?.totalAmount}</p>
           </div>
         </div>
       </div>
@@ -186,7 +186,7 @@ export default function OrderDetailPage() {
                     <p className="text-white/60 text-sm">Size: US {item.size}</p>
                     <p className="text-white/60 text-sm">Quantity: {item.quantity}</p>
                   </div>
-                  <p className="text-white font-medium">${item.price * item.quantity}</p>
+                  <p className="text-white font-medium">₨{item.price * item.quantity}</p>
                 </div>
               ))}
             </div>
@@ -201,25 +201,25 @@ export default function OrderDetailPage() {
             <div className="space-y-2">
               <div className="flex justify-between text-white/60 text-sm">
                 <span>Subtotal</span>
-                <span>${order.financials?.subtotal}</span>
+                <span>₨{order.financials?.subtotal}</span>
               </div>
               <div className="flex justify-between text-white/60 text-sm">
                 <span>Shipping</span>
-                <span>{order.financials?.shippingFee === 0 ? 'Free' : `$${order.financials?.shippingFee}`}</span>
+                <span>{order.financials?.shippingFee === 0 ? 'Free' : `₨${order.financials?.shippingFee}`}</span>
               </div>
               {order.financials?.discount > 0 && (
                 <div className="flex justify-between text-green-400 text-sm">
                   <span>Discount</span>
-                  <span>-${order.financials?.discount}</span>
+                  <span>-₨{order.financials?.discount}</span>
                 </div>
               )}
               <div className="flex justify-between text-white/60 text-sm">
                 <span>Tax</span>
-                <span>${order.financials?.tax}</span>
+                <span>₨{order.financials?.tax}</span>
               </div>
               <div className="flex justify-between text-white font-bold text-lg pt-2 border-t border-white/10">
                 <span>Total</span>
-                <span>${order.financials?.totalAmount}</span>
+                <span>₨{order.financials?.totalAmount}</span>
               </div>
             </div>
           </div>

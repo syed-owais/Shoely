@@ -190,7 +190,8 @@ export default function AdminSettings() {
                                             value={getDisplayValue(setting)}
                                             onChange={(e) => handleChange(setting.key, e.target.value)}
                                             placeholder={setting.is_sensitive ? 'Enter secret value...' : `Enter ${setting.label.toLowerCase()}...`}
-                                            className="w-full bg-white/10 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-[#FF4D6D]/50"
+                                            disabled={setting.key === 'store_currency' && !!setting.value}
+                                            className={`w-full bg-white/10 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-[#FF4D6D]/50 ${setting.key === 'store_currency' && !!setting.value ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         />
                                         {setting.is_sensitive && (
                                             <button

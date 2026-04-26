@@ -392,9 +392,9 @@ export default function ShopPage() {
                     )}
 
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[#FF4D6D] font-bold">${product.price}</span>
+                      <span className="text-[#FF4D6D] font-bold">₨{product.price}</span>
                       {product.originalPrice && (
-                        <span className="text-white/40 text-sm line-through">${product.originalPrice}</span>
+                        <span className="text-white/40 text-sm line-through">₨{product.originalPrice}</span>
                       )}
                     </div>
 

@@ -64,7 +64,7 @@ export default function OrdersPage() {
                                 <p className="text-white/60 text-sm">
                                     {new Date(order.createdAt).toLocaleDateString('en-US', {
                                         month: 'short', day: 'numeric', year: 'numeric'
-                                    })} • {order.items?.length || 0} items • ${order.financials?.totalAmount}
+                                    })} • {order.items?.length || 0} items • ₨{order.financials?.totalAmount}
                                 </p>
                             </div>
                             <Link

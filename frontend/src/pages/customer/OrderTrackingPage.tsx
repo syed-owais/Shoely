@@ -110,7 +110,7 @@ export default function OrderTrackingPage() {
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-white/60 text-sm">Total</p>
-                <p className="text-[#FF4D6D] font-bold text-xl">${searchedOrder.financials?.totalAmount}</p>
+                <p className="text-[#FF4D6D] font-bold text-xl">₨{searchedOrder.financials?.totalAmount}</p>
               </div>
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function OrderTrackingPage() {
                       <p className="text-white/60 text-sm">{item.brand}</p>
                       <p className="text-white/60 text-sm">Size: US {item.size}</p>
                     </div>
-                    <p className="text-white font-medium">${item.price * item.quantity}</p>
+                    <p className="text-white font-medium">₨{item.price * item.quantity}</p>
                   </div>
                 ))}
               </div>

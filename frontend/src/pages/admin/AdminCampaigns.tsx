@@ -207,7 +207,7 @@ export default function AdminCampaigns() {
                     <DollarSign className="w-4 h-4 text-[#FF4D6D]" />
                   )}
                   <span className="text-[#FF4D6D] font-semibold">
-                    {campaign.discountType === 'percentage' ? `${campaign.discountValue}%` : `$${campaign.discountValue}`} off
+                    {campaign.discountType === 'percentage' ? `${campaign.discountValue}%` : `₨${campaign.discountValue}`} off
                   </span>
                 </div>
                 {(campaign.brand || campaign.category) && (

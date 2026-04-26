@@ -200,12 +200,12 @@ export default function AdminPromoCodes() {
                     <DollarSign className="w-4 h-4 text-[#FF4D6D]" />
                   )}
                   <span className="text-white font-medium">
-                    {promo.type === 'percentage' ? `${promo.value}%` : `$${promo.value}`} off
+                    {promo.type === 'percentage' ? `${promo.value}%` : `₨${promo.value}`} off
                   </span>
                 </div>
                 {promo.minOrderAmount && (
                   <span className="text-white/60 text-sm">
-                    Min: ${promo.minOrderAmount}
+                    Min: ₨{promo.minOrderAmount}
                   </span>
                 )}
               </div>

@@ -57,7 +57,6 @@ class SettingsSeeder extends Seeder
             ['group' => 'general', 'key' => 'store_phone', 'value' => null, 'type' => 'string', 'label' => 'Store Phone', 'description' => 'Customer support phone number', 'is_sensitive' => false],
             ['group' => 'general', 'key' => 'store_currency', 'value' => 'PKR', 'type' => 'string', 'label' => 'Currency', 'description' => 'Default currency for the store', 'is_sensitive' => false],
             ['group' => 'general', 'key' => 'shipping_flat_rate', 'value' => '250', 'type' => 'integer', 'label' => 'Flat Shipping Rate (PKR)', 'description' => 'Default flat shipping rate in PKR', 'is_sensitive' => false],
-            ['group' => 'general', 'key' => 'free_shipping_threshold', 'value' => '5000', 'type' => 'integer', 'label' => 'Free Shipping Threshold (PKR)', 'description' => 'Minimum order amount for free shipping', 'is_sensitive' => false],
         ];
 
         foreach ($settings as $setting) {

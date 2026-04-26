@@ -171,7 +171,7 @@ export default function HomePage() {
               >
                 <div className="relative z-10">
                   <span className="inline-block bg-[#FF4D6D] text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
-                    {campaign.discountType === 'percentage' ? `${campaign.discountValue}% OFF` : `$${campaign.discountValue} OFF`}
+                    {campaign.discountType === 'percentage' ? `${campaign.discountValue}% OFF` : `₨${campaign.discountValue} OFF`}
                   </span>
                   <h3 className="font-display font-bold text-xl lg:text-2xl text-white mb-2">
                     {campaign.name}
@@ -238,8 +238,8 @@ export default function HomePage() {
                     </span>
                   )}
                   <span className={`absolute top-2 right-2 text-xs font-semibold px-2 py-1 rounded-full ${product.condition === 'Like New' ? 'bg-green-500/80' :
-                      product.condition === 'Excellent' ? 'bg-blue-500/80' :
-                        'bg-yellow-500/80'
+                    product.condition === 'Excellent' ? 'bg-blue-500/80' :
+                      'bg-yellow-500/80'
                     } text-white`}>
                     {product.condition}
                   </span>
@@ -249,9 +249,9 @@ export default function HomePage() {
                   {product.name}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[#FF4D6D] font-bold">${product.price}</span>
+                  <span className="text-[#FF4D6D] font-bold">₨{product.price}</span>
                   {product.originalPrice && (
-                    <span className="text-white/40 text-sm line-through">${product.originalPrice}</span>
+                    <span className="text-white/40 text-sm line-through">₨{product.originalPrice}</span>
                   )}
                 </div>
               </Link>

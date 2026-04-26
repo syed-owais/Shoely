@@ -57,10 +57,25 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  // Validate token on app startup
+  const setCurrency = useStore(state => state.setCurrency);
+
+  // Validate token and fetch global settings on app startup
   useEffect(() => {
     validateToken();
-  }, []);
+
+    // Fetch public settings (like currency)
+    import('@/lib/axios').then(({ default: api }) => {
+      api.get('/api/settings/public').then(res => {
+        const settings = res.data.body || res.data;
+        if (settings.store_currency) {
+          // Assuming the backend sends PKR, we map it to ₨ or use it as is
+          const code = settings.store_currency;
+          const symbol = code === 'PKR' ? '₨' : code;
+          setCurrency(symbol, code);
+        }
+      }).catch(err => console.error('Failed to fetch public settings:', err));
+    });
+  }, [setCurrency]);
 
   return (
     <BrowserRouter>

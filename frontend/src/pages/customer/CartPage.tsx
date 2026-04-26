@@ -130,7 +130,7 @@ export default function CartPage() {
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
-                  <p className="text-[#FF4D6D] font-bold">${item.price * item.quantity}</p>
+                  <p className="text-[#FF4D6D] font-bold">₨{item.price * item.quantity}</p>
                 </div>
               </div>
             </div>
@@ -192,16 +192,16 @@ export default function CartPage() {
             <div className="space-y-2 pt-4 border-t border-white/10">
               <div className="flex justify-between text-white/60">
                 <span>Subtotal</span>
-                <span>${subtotal}</span>
+                <span>₨{subtotal}</span>
               </div>
               <div className="flex justify-between text-white/60">
                 <span>Shipping</span>
-                <span>{shipping === 0 ? 'Free' : `$${shipping}`}</span>
+                <span>{shipping === 0 ? 'Free' : `₨${shipping}`}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-green-400">
                   <span>Discount</span>
-                  <span>-${discount}</span>
+                  <span>-₨{discount}</span>
                 </div>
               )}
               <div className="flex justify-between text-white font-bold text-lg pt-2 border-t border-white/10">
