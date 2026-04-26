@@ -105,6 +105,17 @@ export default function AdminProductEdit() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      const target = e.target as HTMLElement;
+      const tag = target.tagName.toLowerCase();
+      const isInteractive = tag === 'button' || tag === 'input' && (target as HTMLInputElement).type === 'checkbox' || tag === 'select' || tag === 'textarea';
+      if (!isInteractive) {
+        e.preventDefault();
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -112,6 +123,8 @@ export default function AdminProductEdit() {
     setSaving(true);
 
     try {
+      const sizesToSave = formData.sizes?.filter(s => s.quantity > 0 && s.available) || [];
+
       const payload = {
         name: formData.name,
         brand: formData.brand,
@@ -126,7 +139,7 @@ export default function AdminProductEdit() {
         category: formData.category,
         tags: formData.tags,
         is_active: formData.isActive,
-        sizes: formData.sizes,
+        sizes: sizesToSave,
       };
 
       if (isEditing && id) {
@@ -301,7 +314,7 @@ export default function AdminProductEdit() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="space-y-6">
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white/5 rounded-xl p-6 border border-white/10">

@@ -121,6 +121,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/products', [ProductController::class, 'store']);
     Route::put('/products/{product}', [ProductController::class, 'update']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+    Route::delete('/products/{product}/sizes/{size}', [ProductController::class, 'deleteSize']);
     
     // Image Upload
     Route::post('/upload-image', [\App\Http\Controllers\Api\ImageUploadController::class, 'upload']);
