@@ -52,7 +52,9 @@ export default function AdminProductEdit() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let ignore = false;
     api.get('/api/product-attributes').then(res => {
+      if (ignore) return;
       const data = res.data.body || res.data;
       if (data.product_conditions?.length) setConditions(data.product_conditions);
       if (data.product_brands?.length) setBrands(data.product_brands);
@@ -69,16 +71,25 @@ export default function AdminProductEdit() {
           }));
         }
       }
-    }).catch(err => console.error('Failed to load product attributes:', err));
+    }).catch(err => {
+      if (!ignore) console.error('Failed to load product attributes:', err);
+    });
+    return () => { ignore = true; };
   }, [isEditing]);
 
   useEffect(() => {
+    let ignore = false;
     if (isEditing && id) {
       productApi.getById(id).then(res => {
-        const product = res.data.data || res.data;
-        setFormData(product);
-      }).catch(err => console.error('Failed to load product:', err));
+        if (!ignore) {
+          const product = res.data.data || res.data;
+          setFormData(product);
+        }
+      }).catch(err => {
+        if (!ignore) console.error('Failed to load product:', err);
+      });
     }
+    return () => { ignore = true; };
   }, [isEditing, id]);
 
   const validate = () => {

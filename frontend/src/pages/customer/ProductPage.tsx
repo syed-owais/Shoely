@@ -21,18 +21,26 @@ export default function ProductPage() {
   const pageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let ignore = false;
     const fetchProduct = async () => {
       try {
         const res = await productApi.getById(id || '');
-        setProduct(res.data.data || res.data);
+        if (!ignore) {
+          setProduct(res.data.data || res.data);
+        }
       } catch (err) {
-        console.error('Failed to load product:', err);
-        setProduct(null);
+        if (!ignore) {
+          console.error('Failed to load product:', err);
+          setProduct(null);
+        }
       } finally {
-        setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+        }
       }
     };
     fetchProduct();
+    return () => { ignore = true; };
   }, [id]);
 
   useEffect(() => {

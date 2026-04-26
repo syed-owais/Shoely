@@ -12,19 +12,27 @@ export default function AdminProducts() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (ignore = false) => {
     try {
       const res = await adminProductApi.getAll();
-      setProducts(res.data.data || []);
+      if (!ignore) {
+        setProducts(res.data.data || []);
+      }
     } catch (err) {
-      console.error('Failed to load products:', err);
+      if (!ignore) {
+        console.error('Failed to load products:', err);
+      }
     } finally {
-      setLoading(false);
+      if (!ignore) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchProducts();
+    let ignore = false;
+    fetchProducts(ignore);
+    return () => { ignore = true; };
   }, []);
 
   const filteredProducts = products.filter(product => {

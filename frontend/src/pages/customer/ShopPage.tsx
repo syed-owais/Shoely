@@ -142,8 +142,11 @@ export default function ShopPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchIdRef = useRef(0);
+
   // Core fetch function that accepts a specific filter state
   const fetchProductsWithFilters = async (f: typeof filters) => {
+    const currentFetchId = ++fetchIdRef.current;
     setLoading(true);
     try {
       const params: Record<string, any> = {};
@@ -155,22 +158,30 @@ export default function ShopPage() {
       if (f.sortBy) params.sort_by = f.sortBy;
 
       const res = await productApi.getAll(params);
-      setProducts(res.data.data || []);
+      if (currentFetchId === fetchIdRef.current) {
+        setProducts(res.data.data || []);
+      }
     } catch (err) {
-      console.error('Failed to load products:', err);
+      if (currentFetchId === fetchIdRef.current) {
+        console.error('Failed to load products:', err);
+      }
     } finally {
-      setLoading(false);
+      if (currentFetchId === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
-  // Initial load
-  useEffect(() => {
-    fetchProductsWithFilters(filters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const isFirstMount = useRef(true);
 
-  // Debounce effect for TEXT inputs (search, minPrice, maxPrice)
+  // Debounce effect for TEXT inputs (search, minPrice, maxPrice) and initial load
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      fetchProductsWithFilters(filters);
+      return;
+    }
+
     const timer = setTimeout(() => {
       // Premium UX: require at least 3 characters to search (unless it's empty/cleared)
       if (filters.search.length > 0 && filters.search.length < 3) {
@@ -180,6 +191,7 @@ export default function ShopPage() {
     }, 500);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.search, filters.minPrice, filters.maxPrice]);
 
   useEffect(() => {

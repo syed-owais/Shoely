@@ -27,21 +27,29 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let ignore = false;
     const fetchData = async () => {
       try {
         const [productsRes, campaignsRes] = await Promise.all([
           productApi.getFeatured(),
           campaignApi.getActive(),
         ]);
-        setFeaturedProducts(productsRes.data.data || []);
-        setActiveCampaigns(campaignsRes.data.data || []);
+        if (!ignore) {
+          setFeaturedProducts(productsRes.data.data || []);
+          setActiveCampaigns(campaignsRes.data.data || []);
+        }
       } catch (err) {
-        console.error('Failed to load homepage data:', err);
+        if (!ignore) {
+          console.error('Failed to load homepage data:', err);
+        }
       } finally {
-        setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+        }
       }
     };
     fetchData();
+    return () => { ignore = true; };
   }, []);
 
   useEffect(() => {
