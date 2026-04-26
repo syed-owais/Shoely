@@ -45,7 +45,7 @@ export default function AdminProductEdit() {
   const [newSize, setNewSize] = useState('');
   const [imageMode, setImageMode] = useState<'url' | 'upload'>('url');
   const [uploadingImage, setUploadingImage] = useState(false);
-  
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -160,11 +160,11 @@ export default function AdminProductEdit() {
       // Save to database
       try {
         await api.post('/api/admin/product-attributes', { type: 'size', value: s.toString() });
-        setDefaultSizes(prev => [...prev, s].sort((a,b) => a-b));
+        setDefaultSizes(prev => [...prev, s].sort((a, b) => a - b));
       } catch (err) {
         console.error('Failed to save new size:', err);
       }
-      
+
       setFormData(prev => ({
         ...prev,
         sizes: [...(prev.sizes || []), { size: s, available: true, quantity: 5 }].sort((a, b) => a.size - b.size),
@@ -188,7 +188,7 @@ export default function AdminProductEdit() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
     const file = e.target.files[0];
-    
+
     const fd = new FormData();
     fd.append('image', file);
 
@@ -472,7 +472,7 @@ export default function AdminProductEdit() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold text-white">Size Availability</h2>
               </div>
-              
+
               <div className="flex gap-2 mb-4">
                 <input type="number" step="0.5" value={newSize} onChange={(e) => setNewSize(e.target.value)} placeholder="Add size (e.g. 15)" className="flex-1 bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#FF4D6D]/50" />
                 <button type="button" onClick={addSize} className="px-3 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"><Plus className="w-4 h-4" /></button>
