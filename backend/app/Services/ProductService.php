@@ -167,10 +167,10 @@ class ProductService
     }
 
     /**
-     * Soft delete a product (set is_active to false).
+     * Delete a product.
      */
     public static function deleteProduct(Product $product): void
     {
-        $product->update(['is_active' => false]);
+        $product->delete();
     }
 }
