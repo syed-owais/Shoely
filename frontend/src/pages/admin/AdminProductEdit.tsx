@@ -20,7 +20,7 @@ export default function AdminProductEdit() {
   const [conditions, setConditions] = useState<string[]>(fallbackConditions);
   const [brands, setBrands] = useState<string[]>(fallbackBrands);
   const [categories, setCategories] = useState<string[]>(fallbackCategories);
-  const [defaultSizes, setDefaultSizes] = useState<number[]>(fallbackSizes);
+  const [, setDefaultSizes] = useState<number[]>(fallbackSizes);
 
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
